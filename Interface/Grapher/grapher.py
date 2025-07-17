@@ -1,10 +1,13 @@
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import (
+     FigureCanvasTkAgg)
+import matplotlib.animation as animation
+import tkinter as tk
+import numpy as np
 from tkinter import *
-import tkinter as tk 
 import time
 import serial
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-
+ 
 def animate(i, dataList, ser):
     ser.write(b'g')                                     # Transmit the char 'g' to receive the Arduino data point
     arduinoData_string = ser.readline().decode('ascii') # Decode receive Arduino data as a formatted string
@@ -27,19 +30,30 @@ def animate(i, dataList, ser):
     ax.set_ylabel("Pressure (kPa)")                              # Set title of y axis 
     ax.get_xaxis().set_visible(False)
 
-
 dataList = []                                           # Create empty list variable for later use
-                                                        
-fig = plt.figure()                                      # Create Matplotlib plots fig is the 'higher level' plot window
-ax = fig.add_subplot(111)                               # Add subplot to main fig window
 
-commPort = '/dev/cu.usbmodem1101'
+# Initialize Tkinter and Matplotlib Figure
+root = tk.Tk()
+fig, ax = plt.subplots()
+ 
+# Tkinter Application
+frame = tk.Frame(root)
+root.title('Pressure Grapher')
+frame.pack()
+ 
+# Create Canvas
+canvas = FigureCanvasTkAgg(fig, master=root)  
+canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+ 
+# Plot data on Matplotlib Figure
+commPort = '/dev/cu.usbmodem101'
 ser = serial.Serial(commPort, baudrate = 9600)          # Establish Serial object with COM port and BAUD rate to match Arduino Port/rate
 time.sleep(2)                                           # Time delay for Arduino Serial initialization 
 
                                                         # Matplotlib Animation Fuction that takes takes care of real time plot.
                                                         # Note that 'fargs' parameter is where we pass in our dataList and Serial object. 
 ani = animation.FuncAnimation(fig, animate, frames=100, fargs=(dataList, ser), interval=100) 
-
-plt.show()                                              # Keep Matplotlib plot persistent on screen until it is closed
+canvas.draw()
+ 
+root.mainloop()
 ser.close()                                             # Close Serial connection when plot is closed
