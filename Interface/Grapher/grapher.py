@@ -23,8 +23,8 @@ def animate(i, dataList, ser):
     ax.plot(dataList)                                   # Plot new data frame
     
     ax.set_ylim([-50, 5])                              # Set Y axis limit of plot
-    ax.set_title("Voltage Plot")                        # Set title of figure
-    ax.set_ylabel("Voltage (V)")                              # Set title of y axis 
+    ax.set_title("Pressure Plot")                        # Set title of figure
+    ax.set_ylabel("Pressure (kPa)")                              # Set title of y axis 
     ax.get_xaxis().set_visible(False)
 
 
