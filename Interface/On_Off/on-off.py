@@ -2,7 +2,7 @@ from tkinter import *
 import tkinter as tk 
 import serial
 
-commPort = '/dev/cu.usbmodem2101'
+commPort = '/dev/cu.usbmodem101'
 ser = serial.Serial(commPort, baudrate = 9600, timeout = 1)
 
 def turnOnLED():
