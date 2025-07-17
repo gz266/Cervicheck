@@ -15,7 +15,7 @@ def turnOffLED():
 root = Tk() 
 root.title('Blink GUI')
 
-btn_On= tk.Button(root, text="Run Test", command=turnOnLED)
+btn_On= tk.Button(root, text="Turn On", command=turnOnLED)
 btn_On.grid(row=0, column=0)
 
 btn_Off = tk.Button(root, text="Turn Off", command=turnOffLED)
