@@ -46,7 +46,7 @@ canvas = FigureCanvasTkAgg(fig, master=root)
 canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
  
 # Plot data on Matplotlib Figure
-commPort = '/dev/cu.usbmodem101'
+commPort = '/dev/cu.usbmodem1101'
 ser = serial.Serial(commPort, baudrate = 9600)          # Establish Serial object with COM port and BAUD rate to match Arduino Port/rate
 time.sleep(2)                                           # Time delay for Arduino Serial initialization 
 
