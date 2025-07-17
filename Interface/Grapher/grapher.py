@@ -5,23 +5,6 @@ import serial
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-dataList = []                                           # Create empty list variable for later use
-                                                        
-fig = plt.figure()                                      # Create Matplotlib plots fig is the 'higher level' plot window
-ax = fig.add_subplot(111)                               # Add subplot to main fig window
-
-commPort = '/dev/cu.usbmodem1101'
-ser = serial.Serial(commPort, baudrate = 9600)          # Establish Serial object with COM port and BAUD rate to match Arduino Port/rate
-time.sleep(2)                                           # Time delay for Arduino Serial initialization 
-
-                                                        # Matplotlib Animation Fuction that takes takes care of real time plot.
-                                                        # Note that 'fargs' parameter is where we pass in our dataList and Serial object. 
-ani = animation.FuncAnimation(fig, animate, frames=100, fargs=(dataList, ser), interval=100) 
-
-plt.show()                                              # Keep Matplotlib plot persistent on screen until it is closed
-ser.close()                                             # Close Serial connection when plot is closed
-
-
 def animate(i, dataList, ser):
     ser.write(b'g')                                     # Transmit the char 'g' to receive the Arduino data point
     arduinoData_string = ser.readline().decode('ascii') # Decode receive Arduino data as a formatted string
@@ -43,3 +26,20 @@ def animate(i, dataList, ser):
     ax.set_title("Voltage Plot")                        # Set title of figure
     ax.set_ylabel("Voltage (V)")                              # Set title of y axis 
     ax.get_xaxis().set_visible(False)
+
+
+dataList = []                                           # Create empty list variable for later use
+                                                        
+fig = plt.figure()                                      # Create Matplotlib plots fig is the 'higher level' plot window
+ax = fig.add_subplot(111)                               # Add subplot to main fig window
+
+commPort = '/dev/cu.usbmodem101'
+ser = serial.Serial(commPort, baudrate = 9600)          # Establish Serial object with COM port and BAUD rate to match Arduino Port/rate
+time.sleep(2)                                           # Time delay for Arduino Serial initialization 
+
+                                                        # Matplotlib Animation Fuction that takes takes care of real time plot.
+                                                        # Note that 'fargs' parameter is where we pass in our dataList and Serial object. 
+ani = animation.FuncAnimation(fig, animate, frames=100, fargs=(dataList, ser), interval=100) 
+
+plt.show()                                              # Keep Matplotlib plot persistent on screen until it is closed
+ser.close()                                             # Close Serial connection when plot is closed
