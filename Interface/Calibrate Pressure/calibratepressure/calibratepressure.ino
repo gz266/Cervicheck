@@ -122,7 +122,7 @@ void loop(void) {
     
   if(Serial.available()>0){
     userInput = Serial.read();               // read user input
-    if(userInput == 'Calibrate Pressure'){         
+    if(userInput == 'p'){         
       digitalWrite(greenLED, HIGH);
       digitalWrite(yellowLED, LOW);
       delay(1000);
@@ -130,15 +130,15 @@ void loop(void) {
       calibratePressure();
       long t2 = millis();
     }
-    if(userInput == 'Recieve Vacuum Parameters'){
-      data = Serial.readStringUntil('\r');
-      slope = data.toFloat();
-      data = Serial.readStringUntil('\r');
-      yint = data.toFloat();
+    // if(userInput == 'r'){
+    //   data = Serial.readStringUntil('\r');
+    //   slope = data.toFloat();
+    //   data = Serial.readStringUntil('\r');
+    //   yint = data.toFloat();
 
-      Serial.println(slope);
-      Serial.println(yint);
-    }
+    //   Serial.println(slope);
+    //   Serial.println(yint);
+    // }
   }
 } // Void Loop
     
