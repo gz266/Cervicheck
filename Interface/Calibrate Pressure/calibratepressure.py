@@ -12,8 +12,9 @@ sleep(2)
 # Functions
 def calibratePressure(voltage, pressure):
     ser.write(b'p')
-    for i in range(27):
+    for i in range(26):
         arduinoData_string = ser.readline().decode('ascii')
+        print(arduinoData_string)
         try:
             arduinoData_float = float(arduinoData_string)   # Convert to float
         
@@ -24,23 +25,27 @@ def calibratePressure(voltage, pressure):
 
         except:                                             # Pass if data point is bad                               
             pass
+    print('test')
     regressResult = scipy.stats.linregress(pressure, voltage)
+    print('finished')
     
     slope = regressResult.slope
     intercept = regressResult.intercept
     
     print(slope)
     print(intercept)
+    voltage = []
+    pressure = []
 
-    # sleep(0.5)
-    # # Send slope and intercept to Arduino
-    # ser.write(b'r')
-    # slope = str(slope) + '\r'
-    # intercept = str(intercept) + '\r'
-    # ser.write(intercept.encode())   
-    # sleep(0.1)
-    # ser.write(slope.encode())
-    # sleep(0.1)
+    sleep(0.5)
+    # Send slope and intercept to Arduino
+    ser.write(b'r')
+    slope = str(slope) + '\r'
+    intercept = str(intercept) + '\r'
+    ser.write(intercept.encode())   
+    sleep(0.1)
+    ser.write(slope.encode())
+    sleep(0.1)
     
     
 
