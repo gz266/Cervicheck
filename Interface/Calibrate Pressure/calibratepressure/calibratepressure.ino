@@ -4,12 +4,11 @@
 #include "AD5933.h"
 #include <SD.h>
 
-
 Adafruit_MCP4725 dac;
 Adafruit_ADS1015 ads1015;
 
 #define DAC_RESOLUTION (9)
-
+char userInput;
 // AD5933 Constants
 
 #define START_FREQ (10000)
@@ -66,12 +65,12 @@ const float error = 0.05;
 
 void setup(void) {
   Serial.begin(9600);
-  Wire.begin();
-
+  Wire.begin();                    //  setup serial
   // LEDs
   startbuttonState = digitalRead(startbuttonPin);
   pinMode(greenLED, OUTPUT);
   pinMode(yellowLED, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
 
   // Pull pin A2 to ground
   pinMode(A2, OUTPUT);
@@ -120,40 +119,26 @@ void loop(void) {
   dac.setVoltage(0, false);
   digitalWrite(greenLED, LOW);
   digitalWrite(yellowLED, HIGH);
-  if(Serial.available()> 0){ 
     
+  if(Serial.available()>0){
     userInput = Serial.read();               // read user input
+    if(userInput == 'p'){         
+      digitalWrite(greenLED, HIGH);
+      digitalWrite(yellowLED, LOW);
+      delay(1000);
+      long t1 = millis();
+      calibratePressure();
+      long t2 = millis();
       
-      if(userInput == 'p'){                
-        digitalWrite(greenLED, HIGH);
-        digitalWrite(yellowLED, LOW);
-        long t1 = millis();
-        calibratePressure();
-        long t2 = millis();
-
-        Serial.println("Done!");
-        for (int i = 1; i < 8; i++) {
-        Serial.println(stressStrain[i-1]);
-        } 
-        Serial.println(t2-t1);
-        for (int i = 1; i < 8; i++) {
-        stressStrain[i] = 0;
-        } 
-        Serial.println(" ");
-        Serial.println("RampTime");
-        for (int i = 1; i < PRES_NUM_INCR; i++) {
-        Serial.print(rampTime[i-1]);
-        Serial.print(" ");
-        } 
-        Serial.println(" ");
-        Serial.println("CollectionTime");
-        for (int i = 1; i < PRES_NUM_INCR; i++) {
-        Serial.print(collectionTime[i-1]);
-        Serial.print(" ");
-        } 
-    } // Serial.available
+      Serial.println("Done!");
+      for (int i = 1; i < 8; i++) {
+      Serial.println(stressStrain[i-1]);
+      } 
+      Serial.print("Time: ");
+      Serial.println(t2-t1); 
+    }
+  }
 } // Void Loop
-}   
     
 
 void calibratePressure() {
@@ -182,7 +167,12 @@ void calibratePressure() {
     Serial.println(getPressure());
   }
 }
-
+void selectPad(int p) {
+  // Pad 0 is calibration resistor, Pad 1-7 are on flex pcb
+  digitalWrite(sL[0], MUXtable[p][0]);
+  digitalWrite(sL[1], MUXtable[p][1]);
+  digitalWrite(sL[2], MUXtable[p][2]);
+}
 // Pressure Control Functions
 float getPressure(void) {
   /*

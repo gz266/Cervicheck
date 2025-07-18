@@ -2,21 +2,45 @@ from tkinter import *
 import tkinter as tk 
 import serial
 from time import sleep
+import scipy
 
-commPort = '/dev/cu.usbmodem1101'
+
+commPort = '/dev/cu.usbmodem11201'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
-# Function
-def calibratePressure():
+# Functions
+def calibratePressure(voltage, pressure):
     ser.write(b'p')
+    for i in range(27):
+        arduinoData_string = ser.readline().decode('ascii')
+        try:
+            arduinoData_float = float(arduinoData_string)   # Convert to float
+        
+            if(arduinoData_float > 0):
+                voltage.append(arduinoData_float)           # Add to voltage if positive
+            elif(arduinoData_float < 0):
+                pressure.append(arduinoData_float)          # Add to pressure if negative
+
+        except:                                             # Pass if data point is bad                               
+            pass
+    regressResult = scipy.stats.linregress(pressure, voltage)
+    slope = regressResult.slope
+    intercept = regressResult.intercept
+    print(slope)
+    print(intercept)
+    voltage = []
+    pressure = []
+# Create empty arrays for later use
+voltage = []
+pressure = []
 
 # Window
 win = Tk() 
 win.title('Calibrate GUI')
 win.minsize(200,60)
 
-calibrateBtn = tk.Button(win, text='Calibrate', command=calibratePressure)
+calibrateBtn = tk.Button(win, text='Calibrate', command=lambda : calibratePressure(voltage, pressure))
 calibrateBtn.grid(row=0, column=0)
 
 win.mainloop()
