@@ -9,7 +9,7 @@ commPort = '/dev/cu.usbmodem11201'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
-# Functions
+# Function
 def calibratePressure(voltage, pressure):
     ser.write(b'p')
     for i in range(26):
@@ -25,9 +25,7 @@ def calibratePressure(voltage, pressure):
 
         except:                                             # Pass if data point is bad                               
             pass
-    print('test')
     regressResult = scipy.stats.linregress(pressure, voltage)
-    print('finished')
     
     slope = regressResult.slope
     intercept = regressResult.intercept
@@ -58,6 +56,7 @@ win = Tk()
 win.title('Calibrate GUI')
 win.minsize(200,60)
 
+# Button widget
 calibrateBtn = tk.Button(win, text='Calibrate', command=lambda : calibratePressure(voltage, pressure))
 calibrateBtn.grid(row=0, column=0)
 

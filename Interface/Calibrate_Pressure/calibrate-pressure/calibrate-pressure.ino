@@ -125,20 +125,19 @@ void loop(void) {
     if(userInput == 'p'){         
       digitalWrite(greenLED, HIGH);
       digitalWrite(yellowLED, LOW);
-      delay(1000);
       long t1 = millis();
       calibratePressure();
       long t2 = millis();
     }
-    // if(userInput == 'r'){
-    //   data = Serial.readStringUntil('\r');
-    //   slope = data.toFloat();
-    //   data = Serial.readStringUntil('\r');
-    //   yint = data.toFloat();
+  if(userInput == 'r'){
+    data = Serial.readStringUntil('\r');
+    slope = data.toFloat();
+    data = Serial.readStringUntil('\r');
+    yint = data.toFloat();
 
-    //   Serial.println(slope);
-    //   Serial.println(yint);
-    // }
+    Serial.println(slope);
+    Serial.println(yint);
+    }
   }
 } // Void Loop
     
