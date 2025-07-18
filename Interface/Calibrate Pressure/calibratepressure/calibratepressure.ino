@@ -129,13 +129,6 @@ void loop(void) {
       long t1 = millis();
       calibratePressure();
       long t2 = millis();
-      
-      Serial.println("Done!");
-      for (int i = 1; i < 8; i++) {
-      Serial.println(stressStrain[i-1]);
-      } 
-      Serial.print("Time: ");
-      Serial.println(t2-t1); 
     }
   }
 } // Void Loop
