@@ -11,7 +11,7 @@ sleep(2)
 
 # Functions
 def calibratePressure(voltage, pressure):
-    ser.write(b'Calibrate Pressure')
+    ser.write(b'p')
     for i in range(27):
         arduinoData_string = ser.readline().decode('ascii')
         try:
@@ -31,16 +31,16 @@ def calibratePressure(voltage, pressure):
     
     print(slope)
     print(intercept)
-    
-    sleep(0.5)
-    # Send slope and intercept to Arduino
-    ser.write(b'Recieve Vacuum Parameters')
-    slope = str(slope) + '\r'
-    intercept = str(intercept) + '\r'
-    ser.write(intercept.encode())   
-    sleep(0.1)
-    ser.write(slope.encode())
-    sleep(0.1)
+
+    # sleep(0.5)
+    # # Send slope and intercept to Arduino
+    # ser.write(b'r')
+    # slope = str(slope) + '\r'
+    # intercept = str(intercept) + '\r'
+    # ser.write(intercept.encode())   
+    # sleep(0.1)
+    # ser.write(slope.encode())
+    # sleep(0.1)
     
     
 
