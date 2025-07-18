@@ -59,9 +59,9 @@ float pressure;
 
 // Pressure Control Constants
 // y = mx where y is digital value to supply DAC and x is desired pressure (-kPa)
-const float slope = -86.50;
-const float yint = 	56.54;
-const float error = 0.05;
+float slope;
+float yint;
+String data;
 
 void setup(void) {
   Serial.begin(9600);
@@ -122,13 +122,22 @@ void loop(void) {
     
   if(Serial.available()>0){
     userInput = Serial.read();               // read user input
-    if(userInput == 'p'){         
+    if(userInput == 'Calibrate Pressure'){         
       digitalWrite(greenLED, HIGH);
       digitalWrite(yellowLED, LOW);
       delay(1000);
       long t1 = millis();
       calibratePressure();
       long t2 = millis();
+    }
+    if(userInput == 'Recieve Vacuum Parameters'){
+      data = Serial.readStringUntil('\r');
+      slope = data.toFloat();
+      data = Serial.readStringUntil('\r');
+      yint = data.toFloat();
+
+      Serial.println(slope);
+      Serial.println(yint);
     }
   }
 } // Void Loop
@@ -159,7 +168,9 @@ void calibratePressure() {
     // Serial.print(i);
     Serial.println(getPressure());
   }
+
 }
+
 void selectPad(int p) {
   // Pad 0 is calibration resistor, Pad 1-7 are on flex pcb
   digitalWrite(sL[0], MUXtable[p][0]);

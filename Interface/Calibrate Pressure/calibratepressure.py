@@ -11,7 +11,7 @@ sleep(2)
 
 # Functions
 def calibratePressure(voltage, pressure):
-    ser.write(b'p')
+    ser.write(b'Calibrate Pressure')
     for i in range(27):
         arduinoData_string = ser.readline().decode('ascii')
         try:
@@ -25,12 +25,25 @@ def calibratePressure(voltage, pressure):
         except:                                             # Pass if data point is bad                               
             pass
     regressResult = scipy.stats.linregress(pressure, voltage)
+    
     slope = regressResult.slope
     intercept = regressResult.intercept
+    
     print(slope)
     print(intercept)
-    voltage = []
-    pressure = []
+    
+    sleep(0.5)
+    # Send slope and intercept to Arduino
+    ser.write(b'Recieve Vacuum Parameters')
+    slope = str(slope) + '\r'
+    intercept = str(intercept) + '\r'
+    ser.write(intercept.encode())   
+    sleep(0.1)
+    ser.write(slope.encode())
+    sleep(0.1)
+    
+    
+
 # Create empty arrays for later use
 voltage = []
 pressure = []
