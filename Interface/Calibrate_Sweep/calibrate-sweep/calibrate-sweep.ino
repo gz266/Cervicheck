@@ -52,8 +52,9 @@ float pressure;
 
 // Pressure Control Constants
 // y = mx where y is digital value to supply DAC and x is desired pressure (-kPa)
-const float slope = -79.1919;
-const float yint = 	36.2067;
+float slope;
+float yint;
+String data;
 const float error = 0.05;
 
 //SD Card
