@@ -26,7 +26,7 @@ def calibratePressure(voltage, pressure):
         print(arduinoData_string)
         try:
             arduinoData_float = float(arduinoData_string)   # Convert to float
-            voltage.append(arduinoData_float)           # Add first data points to voltage
+            pressure.append(arduinoData_float)           # Add first data points to voltage
 
         except:                                             # Pass if data point is bad                               
             pass
