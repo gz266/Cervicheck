@@ -12,19 +12,26 @@ sleep(2)
 # Function
 def calibratePressure(voltage, pressure):
     ser.write(b'p')
-    for i in range(26):
+    for i in range(14):
         arduinoData_string = ser.readline().decode('ascii')
         print(arduinoData_string)
         try:
             arduinoData_float = float(arduinoData_string)   # Convert to float
-        
-            if(arduinoData_float > 0):
-                voltage.append(arduinoData_float)           # Add to voltage if positive
-            elif(arduinoData_float < 0):
-                pressure.append(arduinoData_float)          # Add to pressure if negative
+            voltage.append(arduinoData_float)           # Add first data points to voltage
 
         except:                                             # Pass if data point is bad                               
             pass
+    for i in range(14, 26):
+        arduinoData_string = ser.readline().decode('ascii')
+        print(arduinoData_string)
+        try:
+            arduinoData_float = float(arduinoData_string)   # Convert to float
+            voltage.append(arduinoData_float)           # Add first data points to voltage
+
+        except:                                             # Pass if data point is bad                               
+            pass
+    print(voltage)
+    print(pressure)
     regressResult = scipy.stats.linregress(pressure, voltage)
     
     slope = regressResult.slope
