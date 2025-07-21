@@ -4,6 +4,7 @@
 #include "AD5933.h"
 #include <SD.h>
 
+
 Adafruit_MCP4725 dac;
 Adafruit_ADS1015 ads1015;
 
@@ -14,6 +15,7 @@ char userInput;
 #define START_FREQ (10000)
 #define FREQ_INCR (10000)
 #define NUM_INCR (2)
+
 #define REF_RESIST (300)
 
 // Pressure Constants
@@ -21,7 +23,7 @@ char userInput;
 // 7.5% gel: test -1 increment, 30 increases
 #define PRES_START (-1)
 #define PRES_INCR (-1)
-#define PRES_NUM_INCR (35)
+#define PRES_NUM_INCR (5)
 
 double gain[NUM_INCR + 1];
 int phase[NUM_INCR + 1];
@@ -40,15 +42,6 @@ int MUXtable[8][3] = { { 1, 0, 1 }, { 1, 1, 0 }, { 0, 0, 0 }, { 1, 0, 0 }, { 0, 
 int curPad = 1;
 float stressStrain[7] = {0,0,0,0,0,0,0};
 
-int rampTime[PRES_NUM_INCR];
-int rampTimeInitial = 0;
-int rampTimeFinal = 0;
-int collectionTime[PRES_NUM_INCR];
-int collectionTimeInitial = 0;
-int collectionTimeFinal = 0;
-
-int sweeptime;
-
 // Board Constants
 const int yellowLED = 7;
 const int greenLED = 6;
@@ -59,18 +52,22 @@ float pressure;
 
 // Pressure Control Constants
 // y = mx where y is digital value to supply DAC and x is desired pressure (-kPa)
-float slope;
-float yint;
-String data;
+const float slope = -79.1919;
+const float yint = 	36.2067;
+const float error = 0.05;
+
+//SD Card
+File dataFile;
+String filename = "Data.csv";
+const int chipSelectPin = 2;
 
 void setup(void) {
   Serial.begin(9600);
-  Wire.begin();                    //  setup serial
+  Wire.begin();
+
   // LEDs
-  startbuttonState = digitalRead(startbuttonPin);
   pinMode(greenLED, OUTPUT);
   pinMode(yellowLED, OUTPUT);
-  pinMode(LED_BUILTIN, OUTPUT);
 
   // Pull pin A2 to ground
   pinMode(A2, OUTPUT);
@@ -107,40 +104,45 @@ void setup(void) {
 
   // Initialize DAC
   dac.begin(0x60);
-
-  // Initialize Array
-  for (int i = 0; i < PRES_NUM_INCR; i++) {
-    rampTime[i] = 0;
-    collectionTime[i] = 0;
-  } 
 }
 
 void loop(void) {
-  dac.setVoltage(0, false);
+  dac.setVoltage((0*4095)/5, false);
   digitalWrite(greenLED, LOW);
   digitalWrite(yellowLED, HIGH);
-    
   if(Serial.available()>0){
     userInput = Serial.read();               // read user input
-    if(userInput == 'p'){         
+    if(userInput == 's'){         
+      digitalWrite(greenLED, HIGH);
+      digitalWrite(yellowLED, LOW);
+      long t1 = millis();
+      pressureSweep();
+      long t2 = millis();
+      Serial.println("Done!");
+      for (int i = 1; i < 8; i++) {
+        Serial.println(stressStrain[i-1]);
+      } 
+      Serial.print("Time: ");
+      Serial.println(t2-t1);
+    }
+  if(userInput == 'p'){         
       digitalWrite(greenLED, HIGH);
       digitalWrite(yellowLED, LOW);
       long t1 = millis();
       calibratePressure();
       long t2 = millis();
     }
-    if(userInput == 'r'){
-      data = Serial.readStringUntil('\r');
-      slope = data.toFloat();
-      data = Serial.readStringUntil('\r');
-      yint = data.toFloat();
+  if(userInput == 'r'){
+    data = Serial.readStringUntil('\r');
+    slope = data.toFloat();
+    data = Serial.readStringUntil('\r');
+    yint = data.toFloat();
 
-      Serial.println(slope);
-      Serial.println(yint);
-      }
+    Serial.println(slope);
+    Serial.println(yint);
+    }
   }
-} // Void Loop
-    
+}
 
 void calibratePressure() {
   Serial.println("50");
@@ -167,15 +169,108 @@ void calibratePressure() {
     // Serial.print(i);
     Serial.println(getPressure());
   }
-
+}
+// Testing Functions
+void pressureSweep() {
+  curPad = 1;
+  pressure = PRES_START;
+  for (int i = 0; i < PRES_NUM_INCR; i++, pressure += PRES_INCR) {
+    if (curPad == 8){
+      break;
+    }
+    if ((i < PRES_NUM_INCR + 1) == 0){
+      Serial.println("Break");
+      break;
+    }
+    
+    Serial.print("Sweeping at Pressure (kPa): ");
+    Serial.println(pressure);
+    selectPressure(pressure);
+    int count = 0;
+    // Just in case pressure is not reached
+    while (abs(getPressure()-pressure) > error){
+      count++;
+      if (count > 200){
+        break;
+      }
+    }
+    runTest(curPad);
+  }
 }
 
+void runTest(int padnum) {
+  // dataFile.println(" ");
+  // dataFile.print("Pad ");
+  // dataFile.print(padnum);
+  Serial.print("Pad ");
+  Serial.print(padnum);
+  Serial.println(" being tested");
+  Serial.print("Pressure Tested (kPa): ");
+  Serial.println(getPressure());
+  
+  selectPad(padnum);
+  int time1 = millis();
+  frequencySweepStressStrain();
+  int time2 = millis();
+
+  dataFile.print(", ");
+  dataFile.print(", ");
+  dataFile.print(getPressure());
+  dataFile.print(", ");
+  dataFile.print(time2 - time1);
+  Serial.print("Test time (ms): ");
+  Serial.println(time2 - time1);
+}
+
+// Frequency Sweep
+void frequencySweepStressStrain() {
+  // Create arrays to hold the data
+  int real[NUM_INCR + 1], imag[NUM_INCR + 1];
+
+  // Perform the frequency sweep
+  if (AD5933::frequencySweep(real, imag, NUM_INCR + 1)) {
+    // Print the frequency data
+    int cfreq = START_FREQ / 1000;
+    for (int i = 0; i < NUM_INCR + 1; i++, cfreq += FREQ_INCR / 1000) {
+      // Print raw frequency data
+      Serial.print(cfreq);
+      Serial.print(": Impedance = ");
+      // Serial.print(real[i]);
+      // Serial.print("/I=");
+      // Serial.print(imag[i]);
+
+      // Compute impedance
+      double magnitude = sqrt(pow(real[i], 2) + pow(imag[i], 2));
+      double impedance = 1 / (magnitude * gain[i]);
+      // Serial.print("  |Z|=");
+      //dataFile.print(", ");
+      Serial.println(impedance);
+      //dataFile.print(impedance);
+    }
+    Serial.println("Frequency sweep complete!");
+  } else {
+    Serial.println("Frequency sweep failed...");
+  }
+  // Post Processing -> Test first value in array (lowest frequency)
+  double magnitude = sqrt(pow(real[0], 2) + pow(imag[0], 2));
+  double impedance = 1 / (magnitude * gain[0]);
+  if ((impedance < 500) && (curPad < 8)){
+    stressStrain[curPad-1] = getPressure();
+    Serial.print("Pad ");
+    Serial.print(curPad);
+    Serial.println(" has been contacted!");
+    curPad++;
+  }
+}
+
+// Mux Control Function
 void selectPad(int p) {
   // Pad 0 is calibration resistor, Pad 1-7 are on flex pcb
   digitalWrite(sL[0], MUXtable[p][0]);
   digitalWrite(sL[1], MUXtable[p][1]);
   digitalWrite(sL[2], MUXtable[p][2]);
 }
+
 // Pressure Control Functions
 float getPressure(void) {
   /*
@@ -197,3 +292,9 @@ float getPressure(void) {
   return (((ads1015.readADC_SingleEnded(0) * 3.0) / 1000) - (0.92 * ((ads1015.readADC_SingleEnded(2) * 3.0) / 1000))) / (0.018 * ((ads1015.readADC_SingleEnded(2) * 3.0) / 1000));
 }
 
+void selectPressure(float p) {
+  if (p>0){
+    p = p*-1;
+  }
+  dac.setVoltage(slope*p + yint, false);
+}
