@@ -21,9 +21,9 @@ char userInput;
 // Pressure Constants
 // 12% gel: test -2 increment, 21 increases
 // 7.5% gel: test -1 increment, 30 increases
-#define PRES_START (-1)
-#define PRES_INCR (-1)
-#define PRES_NUM_INCR (5)
+int pres_start = -1;
+int pres_incr = -1;
+int pres_num_incr = 5;
 
 double gain[NUM_INCR + 1];
 int phase[NUM_INCR + 1];
@@ -142,6 +142,18 @@ void loop(void) {
     Serial.println(slope);
     Serial.println(yint);
     }
+  if(userInput == 'i'){
+    data = Serial.readStringUntil('\r');
+    pres_start = data.toInt();
+    data = Serial.readStringUntil('\r');
+    pres_incr = data.toInt();
+    data = Serial.readStringUntil('\r');
+    pres_num_incr = data.toInt();
+
+    Serial.println(pres_start);
+    Serial.println(pres_incr);
+    Serial.println(pres_num_incr);
+    }
   }
 }
 
@@ -174,12 +186,12 @@ void calibratePressure() {
 // Testing Functions
 void pressureSweep() {
   curPad = 1;
-  pressure = PRES_START;
-  for (int i = 0; i < PRES_NUM_INCR; i++, pressure += PRES_INCR) {
+  pressure = pres_start;
+  for (int i = 0; i < pres_num_incr; i++, pressure += pres_incr) {
     if (curPad == 8){
       break;
     }
-    if ((i < PRES_NUM_INCR + 1) == 0){
+    if ((i < pres_num_incr + 1) == 0){
       Serial.println("Break");
       break;
     }
