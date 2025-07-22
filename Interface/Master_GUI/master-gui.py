@@ -4,8 +4,13 @@ import serial
 from time import sleep
 import scipy
 
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import (
+     FigureCanvasTkAgg)
+import matplotlib.animation as animation
 
-commPort = '/dev/cu.usbmodem11201'
+
+commPort = '/dev/cu.usbmodem2101'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
@@ -51,9 +56,22 @@ def calibratePressure(voltage, pressure):
     sleep(0.1)
     ser.write(slope.encode())
     sleep(0.1)
+
 def pressureSweep():
     ser.write(b's')
+
+    # Todo: Arduino returns stress strain data, python analyzes and plots it
+
+    # User needs to be aware of what is going on during the sweep
+    # Include Impedance Outputs
+    # Time Elapsed
+
+    # Data Analysis
+    # Plotting
+
 def changeSweepSettings():
+    # TOOD: Check user input. Minimum starting pressure is 0
+    # Check that pressures reached do not exceed -50 kPa, else return error for user to correct
     ser.write(b'i')
     pres_start = presStart.get() + '\r'
     pres_incr = presIncr.get() + '\r'
@@ -70,29 +88,54 @@ def changeSweepSettings():
 voltage = []
 pressure = []
 
+## Gui Interface
 # Window
 win = Tk() 
 win.title('Stress Strain Testing')
 win.minsize(200,60)
 
-# Button widget
+# Calibrate widget
 calibrateBtn = tk.Button(win, text='Calibrate', command=lambda : calibratePressure(voltage, pressure))
-calibrateBtn.grid(row=1, column=1)
+calibrateBtn.grid(row=4, column=1)
 
-# Button widget
+# Pressure Sweep Widget
 sweepButton = tk.Button(win, text='Pressure Sweep', command=pressureSweep)
-sweepButton.grid(row=1, column=2)
+sweepButton.grid(row=5, column=1)
 
-# Button widget
+# Set Pressure Widget
 set = tk.Button(win, text="Set Pressure Settings", command=changeSweepSettings)
-set.grid(row=1, column=0)
+set.grid(row=3, column=1)
 
 # Entry widgets
 presStart = tk.Entry(win, bd=6, width=8)
-presStart.grid(column=0, row=0)
 presIncr = tk.Entry(win, bd=6, width=8)
-presIncr.grid(column=1, row=0)
 presNumIncr = tk.Entry(win, bd=6, width=8)
-presNumIncr.grid(column=2, row=0)
+
+presStart.insert(0, "-1")
+presIncr.insert(0, "-1")
+presNumIncr.insert(0, "20")
+presStart.grid(column=1, row=0)
+presIncr.grid(column=1, row=1)
+presNumIncr.grid(column=1, row=2)
+
+presStartLabel = tk.Label(win, text='Starting Pressure (kPa)')
+presIncrLabel = tk.Label(win, text='Pressure Increment (kPa)')
+presNumIncrLabel = tk.Label(win, text='Number of Increments')
+presStartLabel.grid(column=0, row=0)
+presIncrLabel.grid(column=0, row=1)
+presNumIncrLabel.grid(column=0, row=2)
+
+# Matplotlib Figure
+fig, ax = plt.subplots(figsize=(3, 2))  # Smaller figure
+
+# Frame to hold the canvas
+frame = tk.Frame(win, width=150, height=150)
+frame.grid(column=5, row=1, rowspan=2, sticky="NSEW")  
+canvas = FigureCanvasTkAgg(fig, master=frame)
+canvas_widget = canvas.get_tk_widget()
+canvas_widget.grid(row=0, column=0, sticky="NSEW")
+
+graphLabel = tk.Label(win, text='Stress Strain Graph')
+graphLabel.grid(column=5, row=0)
 
 win.mainloop()
