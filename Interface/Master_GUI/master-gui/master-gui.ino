@@ -187,6 +187,7 @@ void calibratePressure() {
 void pressureSweep() {
   curPad = 1;
   pressure = pres_start;
+  int sweep;
   for (int i = 0; i < pres_num_incr; i++, pressure += pres_incr) {
     if (curPad == 8){
       break;
@@ -198,8 +199,8 @@ void pressureSweep() {
     // TODO Update Python to say sweeping x of y increment
     // TODO Update Python output to say that we are reaching x pressure (send pressure to Python)
 
-    //  Serial.print("Sweeping at Pressure (kPa): ");
-    // Serial.println(pressure);
+    Serial.print("Sweeping at Pressure (kPa): ");
+    Serial.println(pressure);
     // selectPressure(pressure);
     int count = 0;
     // Just in case pressure is not reached
@@ -219,12 +220,12 @@ void runTest(int padnum) {
   // dataFile.print(padnum);
 
   // TODO Send Pad and Pressure to python
-
-  // Serial.print("Pad ");
-  // Serial.print(padnum);
-  // Serial.println(" being tested");
-  // Serial.print("Pressure Tested (kPa): ");
-  // Serial.println(getPressure());
+  
+  Serial.print("Pad ");
+  Serial.print(padnum);
+  Serial.println(" being tested");
+  Serial.print("Pressure Tested (kPa): ");
+  Serial.println(getPressure());
   
   selectPad(padnum);
   int time1 = millis();
@@ -236,9 +237,10 @@ void runTest(int padnum) {
   // dataFile.print(getPressure());
   dataFile.print(", ");
   dataFile.print(time2 - time1);
+  */
   Serial.print("Test time (ms): ");
   Serial.println(time2 - time1);
-  */
+  
 }
 
 // Frequency Sweep
@@ -280,9 +282,9 @@ void frequencySweepStressStrain() {
     // Send to python that pad was contacted
 
 
-    // Serial.print("Pad ");
-    // Serial.print(curPad);
-    // Serial.println(" has been contacted!");
+    Serial.print("Pad ");
+    Serial.print(curPad);
+    Serial.println(" has been contacted!");
     curPad++;
   }else{
     // TODO

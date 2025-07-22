@@ -1,6 +1,7 @@
 from tkinter import *
 import tkinter as tk 
 from tkinter.scrolledtext import ScrolledText
+import threading
 
 import serial
 from time import sleep
@@ -12,7 +13,7 @@ from matplotlib.backends.backend_tkagg import (
 import matplotlib.animation as animation
 
 
-commPort = '/dev/cu.usbmodem2101'
+commPort = '/dev/cu.usbmodem11201'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
@@ -69,8 +70,26 @@ def calibratePressure(voltage, pressure):
 
 def pressureSweep():
     ser.write(b's') 
+    b = False
     # Todo: Arduino returns stress strain data, python analyzes and plots it
+    while True:
+        data = ser.readline().decode('ascii')
+        updateOutput(data, 100, 100, 100)
+        if data.startswith("Done"):
+            b = True
+        if b:
+            try:
+                data_float = float(data)
+            except:
+                pass
+            try:
+                pressure.append(data_float)
+            except:
+                pass
+        if data.startswith("Time"):
+            break
 
+    
     # Arduino Returns
         # Sweep x of y
         # Pad Number
@@ -88,7 +107,8 @@ def pressureSweep():
     # User needs to be aware of what is going on during the sweep
     # Include Impedance Outputs
     # Time Elapsed
-
+def threadedPressureSweep():
+    threading.Thread(target=pressureSweep).start()
 def updateOutput(long, A, C, Y):
     OutputLabel.insert(tk.END, long)
 
@@ -101,10 +121,13 @@ def analysis():
 def changeSweepSettings():
     maxPres = int(presStart.get()) + int(presIncr.get()) * int(presNumIncr.get())
     if int(presStart.get()) > 0:
+        long_text = "Pressure must begin at 0 kPa or less"
         raise Pressure("Pressure must begin at 0 kPa or less")
     elif maxPres < -50:
+        long_text = "Pressure must be under 50 kPa"
         raise Pressure("Pressure must be under 50 kPa")
     ser.write(b'i')
+    global pres_start, pres_incr, pres_num_incr
     pres_start = presStart.get() + '\r'
     pres_incr = presIncr.get() + '\r'
     pres_num_incr = presNumIncr.get() + '\r'
@@ -118,9 +141,11 @@ def changeSweepSettings():
 
     
 
-# Create empty arrays for later use
-voltage = []
+# Create dummy variables for later use
+voltageLinReg = []
+pressureLinReg = []
 pressure = []
+long_text = "Text\n"
 
 ## Gui Interface
 # Window
@@ -140,11 +165,11 @@ win.minsize(200,60)
 
 ## Frame 1 Widgets
 # Calibrate widget
-calibrateBtn = tk.Button(frame1, text='Calibrate', command=lambda : calibratePressure(voltage, pressure))
+calibrateBtn = tk.Button(frame1, text='Calibrate', command=lambda : calibratePressure(voltageLinReg, pressureLinReg))
 calibrateBtn.grid(row=4, column=1)
 
 # Pressure Sweep Widget
-sweepButton = tk.Button(frame1, text='Pressure Sweep', command=pressureSweep)
+sweepButton = tk.Button(frame1, text='Pressure Sweep', command=threadedPressureSweep)
 sweepButton.grid(row=5, column=1)
 
 # Set Pressure Widget
@@ -179,8 +204,8 @@ o.grid(column=0, row=0)
 OutputLabel = ScrolledText(frame3, width=30, height=10, wrap=tk.WORD)
 OutputLabel.grid(column=0, row=1)
 
-long_text = "This is a long piece of text that will demonstrate the scrolling functionality of the ScrolledText widget. You can add as much text as you want here, and the scrollbar will appear automatically when the content exceeds the visible area. This makes it very convenient for displaying logs, large documents, or any other text-heavy content in your Tkinter applications."
 OutputLabel.insert(tk.END, long_text)
+# OutputLabel.configure(state = 'disabled')
 
 # Text Widget
 a_label = tk.Label(frame3, text='A: ')
@@ -196,7 +221,7 @@ fig, ax = plt.subplots(figsize=(3, 2))  # Smaller figure
 fig.tight_layout()  # Adjust layout to prevent overlap  
 
 ax.set_ylim([0, 50])                              # Set Y axis limit of plot
-ax.set_ylim([0, 2])  
+ax.set_xlim([0, 2])  
 ax.set_title("Stress Strain Curve")                        # Set title of figure
 ax.set_ylabel("Pressure (kPa)")                              # Set title of y axis 
 ax.set_xlabel("Percent Strain (%)")         # Set title of x axis
