@@ -88,7 +88,7 @@ def pressureSweep():
 
 def changeSweepSettings():
     maxPres = int(presStart.get()) + int(presIncr.get()) * int(presNumIncr.get())
-    if int(presStart.get() > 0):
+    if int(presStart.get()) > 0:
         raise Pressure("Pressure must begin at 0 kPa or less")
     elif maxPres < -50:
         raise Pressure("Pressure must be under 50 kPa")
@@ -167,10 +167,6 @@ graphLabel = tk.Label(frame2, text='Stress Strain Graph')
 graphLabel.grid(column=5, row=0)
 
 # Dynamic Text Outputs
-presNumIncrLabel = tk.Label(frame1, text='Number of Increments')
-presStartLabel.grid(column=0, row=0, rowspan=3, columnspan=3)
-presIncrLabel.grid(column=0, row=1)
-presNumIncrLabel.grid(column=0, row=2)
 
 # Text Widget
 
