@@ -58,9 +58,18 @@ def calibratePressure(voltage, pressure):
     sleep(0.1)
 
 def pressureSweep():
-    ser.write(b's')
-
+    ser.write(b's') 
     # Todo: Arduino returns stress strain data, python analyzes and plots it
+
+    # Arduino Returns
+    # Pad Number
+    # Current Pressure
+    # Sweep x of y
+
+    # Else Return
+    # Setting pressure to x kPa
+
+    # Update Sweep Details Text Widget
 
     # User needs to be aware of what is going on during the sweep
     # Include Impedance Outputs
@@ -91,25 +100,32 @@ pressure = []
 ## Gui Interface
 # Window
 win = Tk() 
+frame1 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
+frame2 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
+
+frame1.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+frame2.grid(row=0, column=5, padx=10, pady=10, sticky="nsew")
+
 win.title('Stress Strain Testing')
 win.minsize(200,60)
 
+## Frame 1 Widgets
 # Calibrate widget
-calibrateBtn = tk.Button(win, text='Calibrate', command=lambda : calibratePressure(voltage, pressure))
+calibrateBtn = tk.Button(frame1, text='Calibrate', command=lambda : calibratePressure(voltage, pressure))
 calibrateBtn.grid(row=4, column=1)
 
 # Pressure Sweep Widget
-sweepButton = tk.Button(win, text='Pressure Sweep', command=pressureSweep)
+sweepButton = tk.Button(frame1, text='Pressure Sweep', command=pressureSweep)
 sweepButton.grid(row=5, column=1)
 
 # Set Pressure Widget
-set = tk.Button(win, text="Set Pressure Settings", command=changeSweepSettings)
+set = tk.Button(frame1, text="Set Pressure Settings", command=changeSweepSettings)
 set.grid(row=3, column=1)
 
 # Entry widgets
-presStart = tk.Entry(win, bd=6, width=8)
-presIncr = tk.Entry(win, bd=6, width=8)
-presNumIncr = tk.Entry(win, bd=6, width=8)
+presStart = tk.Entry(frame1, bd=6, width=8)
+presIncr = tk.Entry(frame1, bd=6, width=8)
+presNumIncr = tk.Entry(frame1, bd=6, width=8)
 
 presStart.insert(0, "-1")
 presIncr.insert(0, "-1")
@@ -118,24 +134,36 @@ presStart.grid(column=1, row=0)
 presIncr.grid(column=1, row=1)
 presNumIncr.grid(column=1, row=2)
 
-presStartLabel = tk.Label(win, text='Starting Pressure (kPa)')
-presIncrLabel = tk.Label(win, text='Pressure Increment (kPa)')
-presNumIncrLabel = tk.Label(win, text='Number of Increments')
+presStartLabel = tk.Label(frame1, text='Starting Pressure (kPa)')
+presIncrLabel = tk.Label(frame1, text='Pressure Increment (kPa)')
+presNumIncrLabel = tk.Label(frame1, text='Number of Increments')
 presStartLabel.grid(column=0, row=0)
 presIncrLabel.grid(column=0, row=1)
 presNumIncrLabel.grid(column=0, row=2)
 
+## Frame 2 Widgets
 # Matplotlib Figure
 fig, ax = plt.subplots(figsize=(3, 2))  # Smaller figure
 
 # Frame to hold the canvas
-frame = tk.Frame(win, width=150, height=150)
+frame = tk.Frame(frame2, width=150, height=150)
 frame.grid(column=5, row=1, rowspan=2, sticky="NSEW")  
 canvas = FigureCanvasTkAgg(fig, master=frame)
 canvas_widget = canvas.get_tk_widget()
 canvas_widget.grid(row=0, column=0, sticky="NSEW")
 
-graphLabel = tk.Label(win, text='Stress Strain Graph')
+graphLabel = tk.Label(frame2, text='Stress Strain Graph')
 graphLabel.grid(column=5, row=0)
+
+# Dynamic Text Outputs
+Output = tk.Label(frame1, text='Starting Pressure (kPa)')
+presIncrLabel = tk.Label(frame1, text='Pressure Increment (kPa)')
+presNumIncrLabel = tk.Label(frame1, text='Number of Increments')
+presStartLabel.grid(column=0, row=0, rowspan=3, columnspan=3)
+presIncrLabel.grid(column=0, row=1)
+presNumIncrLabel.grid(column=0, row=2)
+
+# Text Widget
+
 
 win.mainloop()
