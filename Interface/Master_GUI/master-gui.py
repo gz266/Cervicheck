@@ -14,14 +14,6 @@ commPort = '/dev/cu.usbmodem2101'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
-# Exception
-class Pressure(Exception):
-    def __init__(self, message):
-        self.message = message
-        super().__init__(self.message)
-    def __str__(self):
-        return f"{self.message} (Error Code: {self.error_code})"
-
 # Functions
 def calibratePressure(voltage, pressure):
     ser.write(b'p')
@@ -89,11 +81,6 @@ def pressureSweep():
 def changeSweepSettings():
     # TOOD: Check user input. Minimum starting pressure is 0
     # Check that pressures reached do not exceed -50 kPa, else return error for user to correct
-    maxPres = int(presStart.get()) + int(presIncr.get()) * int(presNumIncr.get())
-    if int(presStart.get() > 0):
-        raise Pressure("Pressure must begin at 0 kPa or less")
-    elif maxPres > 50:
-        raise Pressure("Pressure must be under 50 kPa")
     ser.write(b'i')
     pres_start = presStart.get() + '\r'
     pres_incr = presIncr.get() + '\r'
@@ -169,8 +156,6 @@ graphLabel = tk.Label(frame2, text='Stress Strain Graph')
 graphLabel.grid(column=5, row=0)
 
 # Dynamic Text Outputs
-Output = tk.Label(frame1, text='Starting Pressure (kPa)')
-presIncrLabel = tk.Label(frame1, text='Pressure Increment (kPa)')
 presNumIncrLabel = tk.Label(frame1, text='Number of Increments')
 presStartLabel.grid(column=0, row=0, rowspan=3, columnspan=3)
 presIncrLabel.grid(column=0, row=1)
