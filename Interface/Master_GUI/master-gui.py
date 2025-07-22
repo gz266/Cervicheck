@@ -88,7 +88,7 @@ def pressureSweep():
 
 def changeSweepSettings():
     maxPres = int(presStart.get()) + int(presIncr.get()) * int(presNumIncr.get())
-    if int(presStart.get() > 0):
+    if int(presStart.get()) > 0:
         raise Pressure("Pressure must begin at 0 kPa or less")
     elif maxPres < -50:
         raise Pressure("Pressure must be under 50 kPa")
