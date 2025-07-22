@@ -195,10 +195,12 @@ void pressureSweep() {
       Serial.println("Break");
       break;
     }
-    
-    Serial.print("Sweeping at Pressure (kPa): ");
-    Serial.println(pressure);
-    selectPressure(pressure);
+    // TODO Update Python to say sweeping x of y increment
+    // TODO Update Python output to say that we are reaching x pressure (send pressure to Python)
+
+    //  Serial.print("Sweeping at Pressure (kPa): ");
+    // Serial.println(pressure);
+    // selectPressure(pressure);
     int count = 0;
     // Just in case pressure is not reached
     while (abs(getPressure()-pressure) > error){
@@ -215,24 +217,28 @@ void runTest(int padnum) {
   // dataFile.println(" ");
   // dataFile.print("Pad ");
   // dataFile.print(padnum);
-  Serial.print("Pad ");
-  Serial.print(padnum);
-  Serial.println(" being tested");
-  Serial.print("Pressure Tested (kPa): ");
-  Serial.println(getPressure());
+
+  // TODO Send Pad and Pressure to python
+
+  // Serial.print("Pad ");
+  // Serial.print(padnum);
+  // Serial.println(" being tested");
+  // Serial.print("Pressure Tested (kPa): ");
+  // Serial.println(getPressure());
   
   selectPad(padnum);
   int time1 = millis();
   frequencySweepStressStrain();
   int time2 = millis();
-
-  dataFile.print(", ");
-  dataFile.print(", ");
-  dataFile.print(getPressure());
+  /*
+  // dataFile.print(", ");
+  // dataFile.print(", ");
+  // dataFile.print(getPressure());
   dataFile.print(", ");
   dataFile.print(time2 - time1);
   Serial.print("Test time (ms): ");
   Serial.println(time2 - time1);
+  */
 }
 
 // Frequency Sweep
@@ -246,8 +252,8 @@ void frequencySweepStressStrain() {
     int cfreq = START_FREQ / 1000;
     for (int i = 0; i < NUM_INCR + 1; i++, cfreq += FREQ_INCR / 1000) {
       // Print raw frequency data
-      Serial.print(cfreq);
-      Serial.print(": Impedance = ");
+      // Serial.print(cfreq);
+      // Serial.print(": Impedance = ");
       // Serial.print(real[i]);
       // Serial.print("/I=");
       // Serial.print(imag[i]);
@@ -257,22 +263,30 @@ void frequencySweepStressStrain() {
       double impedance = 1 / (magnitude * gain[i]);
       // Serial.print("  |Z|=");
       //dataFile.print(", ");
-      Serial.println(impedance);
+      // Serial.println(impedance);
       //dataFile.print(impedance);
     }
-    Serial.println("Frequency sweep complete!");
+    // Serial.println("Frequency sweep complete!");
   } else {
     Serial.println("Frequency sweep failed...");
   }
   // Post Processing -> Test first value in array (lowest frequency)
   double magnitude = sqrt(pow(real[0], 2) + pow(imag[0], 2));
   double impedance = 1 / (magnitude * gain[0]);
+  
   if ((impedance < 500) && (curPad < 8)){
     stressStrain[curPad-1] = getPressure();
-    Serial.print("Pad ");
-    Serial.print(curPad);
-    Serial.println(" has been contacted!");
+    // TODO 
+    // Send to python that pad was contacted
+
+
+    // Serial.print("Pad ");
+    // Serial.print(curPad);
+    // Serial.println(" has been contacted!");
     curPad++;
+  }else{
+    // TODO
+    // Send to python that pad was not contacted
   }
 }
 
