@@ -30,7 +30,7 @@ def calibratePressure(voltage, pressure):
     ser.write(b'p')
     for i in range(14):
         arduinoData_string = ser.readline().decode('ascii')
-        print(arduinoData_string)
+        updateOutput(arduinoData_string, 100, 100, 100)
         try:
             arduinoData_float = float(arduinoData_string)   # Convert to float
             voltage.append(arduinoData_float)           # Add first data points to voltage
@@ -39,22 +39,18 @@ def calibratePressure(voltage, pressure):
             pass
     for i in range(14, 26):
         arduinoData_string = ser.readline().decode('ascii')
-        print(arduinoData_string)
+        updateOutput(arduinoData_string, 100, 100, 100)
         try:
             arduinoData_float = float(arduinoData_string)   # Convert to float
             pressure.append(arduinoData_float)           # Add first data points to voltage
 
         except:                                             # Pass if data point is bad                               
             pass
-    print(voltage)
-    print(pressure)
     regressResult = scipy.stats.linregress(pressure, voltage)
     
     slope = regressResult.slope
     intercept = regressResult.intercept
     
-    print(slope)
-    print(intercept)
     voltage = []
     pressure = []
 
@@ -63,6 +59,9 @@ def calibratePressure(voltage, pressure):
     ser.write(b'r')
     slope = str(slope) + '\r'
     intercept = str(intercept) + '\r'
+    updateOutput('Slope: '+ slope, 100, 100, 100)
+    updateOutput('Intercept: '+ intercept, 100, 100, 100)
+    updateOutput('Done!', 100, 100, 100)
     ser.write(intercept.encode())   
     sleep(0.1)
     ser.write(slope.encode())
@@ -107,11 +106,9 @@ def pressureSweep():
     # User needs to be aware of what is going on during the sweep
     # Include Impedance Outputs
     # Time Elapsed
-def threadedPressureSweep():
-    threading.Thread(target=pressureSweep).start()
 def updateOutput(long, A, C, Y):
     OutputLabel.insert(tk.END, long)
-
+    OutputLabel.see('end')
 def analysis():
     pass
     # a_label.insert(tk.END, "134")
@@ -138,7 +135,12 @@ def changeSweepSettings():
     ser.write(pres_num_incr.encode())
     sleep(0.1)
 
+# Thread functions so textbox will update in real time
 
+def threadedPressureSweep():
+    threading.Thread(target=pressureSweep).start()
+def threadedCalibratePressure(voltage, pressure):
+    threading.Thread(target=lambda : calibratePressure(voltage, pressure)).start()
     
 
 # Create dummy variables for later use
@@ -146,7 +148,6 @@ voltageLinReg = []
 pressureLinReg = []
 pressure = []
 long_text = "Text\n"
-
 ## Gui Interface
 # Window
 win = Tk() 
@@ -165,7 +166,7 @@ win.minsize(200,60)
 
 ## Frame 1 Widgets
 # Calibrate widget
-calibrateBtn = tk.Button(frame1, text='Calibrate', command=lambda : calibratePressure(voltageLinReg, pressureLinReg))
+calibrateBtn = tk.Button(frame1, text='Calibrate Pressure', command=lambda : threadedCalibratePressure(voltageLinReg, pressureLinReg))
 calibrateBtn.grid(row=4, column=1)
 
 # Pressure Sweep Widget
@@ -217,8 +218,7 @@ youngs_label.grid(column=0, row=4)
 
 ## Frame 2 Widgets
 # Matplotlib Figure
-fig, ax = plt.subplots(figsize=(3, 2))  # Smaller figure
-fig.tight_layout()  # Adjust layout to prevent overlap  
+fig, ax = plt.subplots(figsize=(3, 2), layout='constrained')  # Smaller figure, layout adjusted to prevent overlap
 
 ax.set_ylim([0, 50])                              # Set Y axis limit of plot
 ax.set_xlim([0, 2])  
