@@ -1,5 +1,7 @@
 from tkinter import *
 import tkinter as tk 
+from tkinter.scrolledtext import ScrolledText
+
 import serial
 from time import sleep
 import scipy
@@ -70,12 +72,16 @@ def pressureSweep():
     # Todo: Arduino returns stress strain data, python analyzes and plots it
 
     # Arduino Returns
-    # Pad Number
-    # Current Pressure
-    # Sweep x of y
+        # Sweep x of y
+        # Pad Number
+        # Current Pressure
 
     # Else Return
-    # Setting pressure to x kPa
+        # Setting Pressure to x kPa!
+        # Performming Impedance Sweep!
+        # No Contact Made!
+        # Contact Made!
+
 
     # Update Sweep Details Text Widget
 
@@ -83,8 +89,14 @@ def pressureSweep():
     # Include Impedance Outputs
     # Time Elapsed
 
-    # Data Analysis
-    # Plotting
+def updateOutput(long, A, C, Y):
+    OutputLabel.insert(tk.END, long)
+
+def analysis():
+    pass
+    # a_label.insert(tk.END, "134")
+    # C_label.insert(tk.END, "0.5")
+    # youngs_label.insert(tk.END, "2000")
 
 def changeSweepSettings():
     maxPres = int(presStart.get()) + int(presIncr.get()) * int(presNumIncr.get())
@@ -102,6 +114,8 @@ def changeSweepSettings():
     sleep(0.1)
     ser.write(pres_num_incr.encode())
     sleep(0.1)
+
+
     
 
 # Create empty arrays for later use
@@ -113,9 +127,13 @@ pressure = []
 win = Tk() 
 frame1 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
 frame2 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
+frame3 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
+frame4 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
 
 frame1.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-frame2.grid(row=0, column=5, padx=10, pady=10, sticky="nsew")
+frame2.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+frame3.grid(row=0, column=4, padx=10, pady=10, sticky="nsew")
+frame4.grid(row=1, column=4, padx=10, pady=10, sticky="nsew")
 
 win.title('Stress Strain Testing')
 win.minsize(200,60)
@@ -152,23 +170,42 @@ presStartLabel.grid(column=0, row=0)
 presIncrLabel.grid(column=0, row=1)
 presNumIncrLabel.grid(column=0, row=2)
 
+## Frame 3 and 4
+
+# Dynamic Text Outputs
+o = tk.Label(frame3, text='Test Outputs')
+o.grid(column=0, row=0)
+
+OutputLabel = ScrolledText(frame3, width=30, height=10, wrap=tk.WORD)
+OutputLabel.grid(column=0, row=1)
+
+long_text = "This is a long piece of text that will demonstrate the scrolling functionality of the ScrolledText widget. You can add as much text as you want here, and the scrollbar will appear automatically when the content exceeds the visible area. This makes it very convenient for displaying logs, large documents, or any other text-heavy content in your Tkinter applications."
+OutputLabel.insert(tk.END, long_text)
+
+# Text Widget
+a_label = tk.Label(frame3, text='A: ')
+a_label.grid(column=0, row=2)
+C_label = tk.Label(frame3, text='C: ')
+C_label.grid(column=0, row=3)
+youngs_label = tk.Label(frame3, text="Young's: ")
+youngs_label.grid(column=0, row=4)
+
 ## Frame 2 Widgets
 # Matplotlib Figure
 fig, ax = plt.subplots(figsize=(3, 2))  # Smaller figure
+fig.tight_layout()  # Adjust layout to prevent overlap  
+
+ax.set_ylim([0, 50])                              # Set Y axis limit of plot
+ax.set_ylim([0, 2])  
+ax.set_title("Stress Strain Curve")                        # Set title of figure
+ax.set_ylabel("Pressure (kPa)")                              # Set title of y axis 
+ax.set_xlabel("Percent Strain (%)")         # Set title of x axis
 
 # Frame to hold the canvas
-frame = tk.Frame(frame2, width=150, height=150)
-frame.grid(column=5, row=1, rowspan=2, sticky="NSEW")  
+frame = tk.Frame(frame2)
+frame.grid(column=0, row=0, sticky="NSEW") 
 canvas = FigureCanvasTkAgg(fig, master=frame)
 canvas_widget = canvas.get_tk_widget()
 canvas_widget.grid(row=0, column=0, sticky="NSEW")
-
-graphLabel = tk.Label(frame2, text='Stress Strain Graph')
-graphLabel.grid(column=5, row=0)
-
-# Dynamic Text Outputs
-
-# Text Widget
-
 
 win.mainloop()
