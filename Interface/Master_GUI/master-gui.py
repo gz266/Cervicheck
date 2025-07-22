@@ -167,10 +167,6 @@ graphLabel = tk.Label(frame2, text='Stress Strain Graph')
 graphLabel.grid(column=5, row=0)
 
 # Dynamic Text Outputs
-presNumIncrLabel = tk.Label(frame1, text='Number of Increments')
-presStartLabel.grid(column=0, row=0, rowspan=3, columnspan=3)
-presIncrLabel.grid(column=0, row=1)
-presNumIncrLabel.grid(column=0, row=2)
 
 # Text Widget
 
