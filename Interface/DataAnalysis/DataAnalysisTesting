@@ -1,4 +1,6 @@
-import CervicheckDataAnalysis
+from CervicheckDataAnalysis import align_data, analyze_data, func
+import numpy as np
+import matplotlib.pyplot as plt
 
 @Test
 def test_align_data():
