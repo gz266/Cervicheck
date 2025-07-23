@@ -55,9 +55,8 @@ def calibratePressure(voltage, pressure):
     
     slope = regressResult.slope
     intercept = regressResult.intercept
-    
     voltage = []
-    pressure = [0]
+    pressure = []
 
     sleep(0.5)
     # Send slope and intercept to Arduino
