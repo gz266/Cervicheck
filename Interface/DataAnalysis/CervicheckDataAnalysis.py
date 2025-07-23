@@ -51,3 +51,27 @@ plt.ylabel('Stress (kPa)')
 print(coefficients)
 print(modulus)
 plt.show()
+
+def align_data(stretch, stress):
+    """
+    Aligns the data based on the stretch and strain values.
+    
+    Parameters:
+    stretch (1D array): Stretch factor for the analysis.
+    stress (1D array): Strain data for the trial.
+    
+    Returns:
+    aligned_stretch (1D array): Aligned stretch values.
+    aligned_strain (1D array): Aligned stress values.
+    """
+
+    aligned_stretch = stretch
+    aligned_stress = stress
+
+    for i in range(1, len(stress)):
+        if stress[i] == 0.:
+            aligned_stress = aligned_stress[:i]
+            aligned_stretch = aligned_stretch[:i]
+            return aligned_stretch, aligned_stress
+    
+    return aligned_stretch, aligned_stress
