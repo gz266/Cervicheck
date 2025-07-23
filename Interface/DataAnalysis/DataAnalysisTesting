@@ -1,0 +1,5 @@
+import CervicheckDataAnalysis
+
+
+x = np.array([0, -1, -2.35, -2.99, 0, 0, 0, 0])
+y = np.array([1, 1.2415, 1.406, 1.572, 1.738, 1.9045, 2.071, 2.2375])
