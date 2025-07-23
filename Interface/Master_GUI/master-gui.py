@@ -6,6 +6,7 @@ import threading
 import serial
 from time import sleep
 import scipy
+import numpy as np
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (
@@ -24,13 +25,17 @@ class Pressure(Exception):
         super().__init__(self.message)
     def __str__(self):
         return f"{self.message} (Error Code: {self.error_code})"
-    
+
+# # # # # # 
 # Functions
+# # # # # #
+
+# Testing functions
 def calibratePressure(voltage, pressure):
     ser.write(b'p')
     for i in range(14):
         arduinoData_string = ser.readline().decode('ascii')
-        updateOutput(arduinoData_string, 100, 100, 100)
+        updateOutput(arduinoData_string, a, C, Y)
         try:
             arduinoData_float = float(arduinoData_string)   # Convert to float
             voltage.append(arduinoData_float)           # Add first data points to voltage
@@ -39,7 +44,7 @@ def calibratePressure(voltage, pressure):
             pass
     for i in range(14, 26):
         arduinoData_string = ser.readline().decode('ascii')
-        updateOutput(arduinoData_string, 100, 100, 100)
+        updateOutput(arduinoData_string, a, C, Y)
         try:
             arduinoData_float = float(arduinoData_string)   # Convert to float
             pressure.append(arduinoData_float)           # Add first data points to voltage
@@ -59,9 +64,9 @@ def calibratePressure(voltage, pressure):
     ser.write(b'r')
     slope = str(slope) + '\r'
     intercept = str(intercept) + '\r'
-    updateOutput('Slope: '+ slope, 100, 100, 100)
-    updateOutput('Intercept: '+ intercept, 100, 100, 100)
-    updateOutput('Done!', 100, 100, 100)
+    updateOutput('Slope: '+ slope, a, C, Y)
+    updateOutput('Intercept: '+ intercept, a, C, Y)
+    updateOutput('Done!', a, C, Y)
     ser.write(intercept.encode())   
     sleep(0.1)
     ser.write(slope.encode())
@@ -73,9 +78,14 @@ def pressureSweep():
     # Todo: Arduino returns stress strain data, python analyzes and plots it
     while True:
         data = ser.readline().decode('ascii')
-        updateOutput(data, 100, 100, 100)
+        updateOutput(data, a, C, Y)
         if data.startswith("Done"):
             b = True
+        if data.startswith("Time"):
+            # print(strain)
+            # print(pressure)
+            scatter(pressure, strain)
+            break
         if b:
             try:
                 data_float = float(data)
@@ -85,20 +95,6 @@ def pressureSweep():
                 pressure.append(data_float)
             except:
                 pass
-        if data.startswith("Time"):
-            break
-
-    
-    # Arduino Returns
-        # Sweep x of y
-        # Pad Number
-        # Current Pressure
-
-    # Else Return
-        # Setting Pressure to x kPa!
-        # Performming Impedance Sweep!
-        # No Contact Made!
-        # Contact Made!
 
 
     # Update Sweep Details Text Widget
@@ -106,14 +102,6 @@ def pressureSweep():
     # User needs to be aware of what is going on during the sweep
     # Include Impedance Outputs
     # Time Elapsed
-def updateOutput(long, A, C, Y):
-    OutputLabel.insert(tk.END, long)
-    OutputLabel.see('end')
-def analysis():
-    pass
-    # a_label.insert(tk.END, "134")
-    # C_label.insert(tk.END, "0.5")
-    # youngs_label.insert(tk.END, "2000")
 
 def changeSweepSettings():
     maxPres = int(presStart.get()) + int(presIncr.get()) * int(presNumIncr.get())
@@ -135,6 +123,20 @@ def changeSweepSettings():
     ser.write(pres_num_incr.encode())
     sleep(0.1)
 
+# Graph functions
+def updateOutput(long, A, C, Y):
+    OutputLabel.insert(tk.END, long)
+    OutputLabel.see('end')
+    a_label.insert(tk.END, A)
+    C_label.insert(tk.END, C)
+    youngs_label.insert(tk.END, Y)
+def scatter(stress, strain):
+    ax.scatter(strain, stress, s=4, c='black')
+    canvas.draw()
+    
+def analysis():
+    pass
+
 # Thread functions so textbox will update in real time
 
 def threadedPressureSweep():
@@ -148,18 +150,28 @@ voltageLinReg = []
 pressureLinReg = []
 pressure = []
 long_text = "Text\n"
+a = 0
+C = 0
+Y = 0
+strain = [1.2415, 1.406, 1.572, 1.738, 1.9045, 2.071, 2.2375]
+
 ## Gui Interface
 # Window
 win = Tk() 
+win.grid_rowconfigure(0, weight=1)
+# win.grid_rowconfigure(1, weight=1)
+win.grid_columnconfigure(0, weight=1)
+win.grid_columnconfigure(2, weight=1)
+win.grid_columnconfigure(4, weight=1)
 frame1 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
 frame2 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
 frame3 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
-frame4 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
+# frame4 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
 
 frame1.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 frame2.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
 frame3.grid(row=0, column=4, padx=10, pady=10, sticky="nsew")
-frame4.grid(row=1, column=4, padx=10, pady=10, sticky="nsew")
+# frame4.grid(row=1, column=4, padx=10, pady=10, sticky="nsew")
 
 win.title('Stress Strain Testing')
 win.minsize(200,60)
@@ -168,14 +180,17 @@ win.minsize(200,60)
 # Calibrate widget
 calibrateBtn = tk.Button(frame1, text='Calibrate Pressure', command=lambda : threadedCalibratePressure(voltageLinReg, pressureLinReg))
 calibrateBtn.grid(row=4, column=1)
+# calibrateBtn.config(width=8, height=1)
 
 # Pressure Sweep Widget
 sweepButton = tk.Button(frame1, text='Pressure Sweep', command=threadedPressureSweep)
 sweepButton.grid(row=5, column=1)
+# sweepButton.config(width=8, height=1)
 
 # Set Pressure Widget
 set = tk.Button(frame1, text="Set Pressure Settings", command=changeSweepSettings)
 set.grid(row=3, column=1)
+# set.config(width=8, height=1)
 
 # Entry widgets
 presStart = tk.Entry(frame1, bd=6, width=8)
@@ -185,52 +200,69 @@ presNumIncr = tk.Entry(frame1, bd=6, width=8)
 presStart.insert(0, "-1")
 presIncr.insert(0, "-1")
 presNumIncr.insert(0, "20")
-presStart.grid(column=1, row=0)
-presIncr.grid(column=1, row=1)
-presNumIncr.grid(column=1, row=2)
+presStart.grid(column=1, row=0, sticky="nsew")
+presIncr.grid(column=1, row=1, sticky="nsew")
+presNumIncr.grid(column=1, row=2, sticky="nsew")
 
 presStartLabel = tk.Label(frame1, text='Starting Pressure (kPa)')
 presIncrLabel = tk.Label(frame1, text='Pressure Increment (kPa)')
 presNumIncrLabel = tk.Label(frame1, text='Number of Increments')
-presStartLabel.grid(column=0, row=0)
-presIncrLabel.grid(column=0, row=1)
-presNumIncrLabel.grid(column=0, row=2)
+presStartLabel.grid(column=0, row=0, sticky="nsew")
+presIncrLabel.grid(column=0, row=1, sticky="nsew")
+presNumIncrLabel.grid(column=0, row=2, sticky="nsew")
 
-## Frame 3 and 4
+# frame1.grid_rowconfigure(0, weight=1)
+# frame1.grid_rowconfigure(1, weight=1)
+# frame1.grid_rowconfigure(2, weight=1)
+# frame1.grid_rowconfigure(3, weight=1)
+# frame1.grid_rowconfigure(4, weight=1)
+# frame1.grid_rowconfigure(5, weight=1)
 
-# Dynamic Text Outputs
-o = tk.Label(frame3, text='Test Outputs')
-o.grid(column=0, row=0)
-
-OutputLabel = ScrolledText(frame3, width=30, height=10, wrap=tk.WORD)
-OutputLabel.grid(column=0, row=1)
-
-OutputLabel.insert(tk.END, long_text)
-# OutputLabel.configure(state = 'disabled')
-
-# Text Widget
-a_label = tk.Label(frame3, text='A: ')
-a_label.grid(column=0, row=2)
-C_label = tk.Label(frame3, text='C: ')
-C_label.grid(column=0, row=3)
-youngs_label = tk.Label(frame3, text="Young's: ")
-youngs_label.grid(column=0, row=4)
+# frame1.grid_columnconfigure(0, weight=1)
+# frame1.grid_columnconfigure(1, weight=1)
 
 ## Frame 2 Widgets
 # Matplotlib Figure
 fig, ax = plt.subplots(figsize=(3, 2), layout='constrained')  # Smaller figure, layout adjusted to prevent overlap
 
 ax.set_ylim([0, 50])                              # Set Y axis limit of plot
-ax.set_xlim([0, 2])  
+ax.set_xlim([1, 2.5])  
 ax.set_title("Stress Strain Curve")                        # Set title of figure
 ax.set_ylabel("Pressure (kPa)")                              # Set title of y axis 
 ax.set_xlabel("Percent Strain (%)")         # Set title of x axis
 
 # Frame to hold the canvas
-frame = tk.Frame(frame2)
-frame.grid(column=0, row=0, sticky="NSEW") 
-canvas = FigureCanvasTkAgg(fig, master=frame)
+# frame = tk.Frame(frame2)
+frame2.grid(column=1, row=0, sticky="NSEW") 
+frame2.grid_rowconfigure(0, weight=1)
+frame2.grid_columnconfigure(0, weight=1)
+canvas = FigureCanvasTkAgg(fig, master=frame2)
 canvas_widget = canvas.get_tk_widget()
 canvas_widget.grid(row=0, column=0, sticky="NSEW")
+canvas_widget.grid_rowconfigure(0, weight=1)
+canvas_widget.grid_columnconfigure(0, weight=1)
+
+## Frame 3
+
+# Dynamic Text Outputs
+o = tk.Label(frame3, text='Test Outputs')
+o.grid(column=0, row=0, sticky="nsew")
+
+OutputLabel = ScrolledText(frame3, width=30, height=10, wrap=tk.WORD, relief=tk.RAISED, borderwidth=1)
+OutputLabel.grid(column=0, row=1, sticky="nsew")
+
+OutputLabel.insert(tk.END, long_text)
+# OutputLabel.configure(state = 'disabled')
+
+# Text Widget
+a_label = tk.Text(frame3, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+a_label.insert(tk.END, "a: ")
+a_label.grid(column=0, row=2, sticky="nsew")
+C_label = tk.Text(frame3, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+C_label.insert(tk.END, "C: ")
+C_label.grid(column=0, row=3, sticky="nsew")
+youngs_label = tk.Text(frame3, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+youngs_label.insert(tk.END, "Young's modulus: ")
+youngs_label.grid(column=0, row=4, sticky="nsew")
 
 win.mainloop()
