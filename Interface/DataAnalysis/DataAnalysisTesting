@@ -1,8 +1,9 @@
 from CervicheckDataAnalysis import align_data, analyze_data, func
 import numpy as np
 import matplotlib.pyplot as plt
+import pytest
 
-@Test
+@pytest.mark("align_data sets both arrays to the same size, cutting off zero values from x after the first index")
 def test_align_data():
     x = np.array([0, -1, -2.35, -2.99, 0, 0, 0, 0])
     y = np.array([1, 1.2415, 1.406, 1.572, 1.738, 1.9045, 2.071, 2.2375])
