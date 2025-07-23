@@ -7,6 +7,7 @@ import serial
 from time import sleep
 import scipy
 import numpy as np
+from scipy.optimize import curve_fit
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (
@@ -91,7 +92,7 @@ def pressureSweep():
             coefficients, modulus = analyze_data(x, y)
             ax.plot(x, func(x, *coefficients), 'r-')
             canvas.draw()
-            updateParameters(coefficients[0], coefficients[1], modulus)
+            updateParameters(*coefficients, modulus)
             break
         if b:
             try:
