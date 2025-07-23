@@ -14,7 +14,7 @@ from matplotlib.backends.backend_tkagg import (
 import matplotlib.animation as animation
 
 
-commPort = '/dev/cu.usbmodem11201'
+commPort = '/dev/cu.usbmodem1421201'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
@@ -35,7 +35,7 @@ def calibratePressure(voltage, pressure):
     ser.write(b'p')
     for i in range(14):
         arduinoData_string = ser.readline().decode('ascii')
-        updateOutput(arduinoData_string, a, C, Y)
+        updateOutput(arduinoData_string)
         try:
             arduinoData_float = float(arduinoData_string)   # Convert to float
             voltage.append(arduinoData_float)           # Add first data points to voltage
@@ -44,7 +44,7 @@ def calibratePressure(voltage, pressure):
             pass
     for i in range(14, 26):
         arduinoData_string = ser.readline().decode('ascii')
-        updateOutput(arduinoData_string, a, C, Y)
+        updateOutput(arduinoData_string)
         try:
             arduinoData_float = float(arduinoData_string)   # Convert to float
             pressure.append(arduinoData_float)           # Add first data points to voltage
@@ -64,9 +64,9 @@ def calibratePressure(voltage, pressure):
     ser.write(b'r')
     slope = str(slope) + '\r'
     intercept = str(intercept) + '\r'
-    updateOutput('Slope: '+ slope, a, C, Y)
-    updateOutput('Intercept: '+ intercept, a, C, Y)
-    updateOutput('Done!', a, C, Y)
+    updateOutput('Slope: '+ slope)
+    updateOutput('Intercept: '+ intercept)
+    updateOutput('Done!')
     ser.write(intercept.encode())   
     sleep(0.1)
     ser.write(slope.encode())
@@ -78,7 +78,7 @@ def pressureSweep():
     # Todo: Arduino returns stress strain data, python analyzes and plots it
     while True:
         data = ser.readline().decode('ascii')
-        updateOutput(data, a, C, Y)
+        updateOutput(data)
         if data.startswith("Done"):
             b = True
         if data.startswith("Time"):
@@ -108,10 +108,12 @@ def pressureSweep():
 def changeSweepSettings():
     maxPres = int(presStart.get()) + int(presIncr.get()) * int(presNumIncr.get())
     if int(presStart.get()) > 0:
-        long_text = "Pressure must begin at 0 kPa or less"
+        long_text = "\nPressure must begin at 0 kPa or less"
+        updateOutput(long_text)
         raise Pressure("Pressure must begin at 0 kPa or less")
     elif maxPres < -50:
-        long_text = "Pressure must be under 50 kPa"
+        long_text = "\nPressure must be under 50 kPa"
+        updateOutput(long_text)
         raise Pressure("Pressure must be under 50 kPa")
     ser.write(b'i')
     global pres_start, pres_incr, pres_num_incr
@@ -124,11 +126,14 @@ def changeSweepSettings():
     sleep(0.1)
     ser.write(pres_num_incr.encode())
     sleep(0.1)
+    long_text = "\nSweep Settings Changed:\nStart: " + pres_start + "Increment: " + pres_incr + "Number of Increments: " + pres_num_incr
+    updateOutput(long_text)
 
 # Visuals functions
-def updateOutput(long, A, C, Y):
+def updateOutput(long):
     OutputLabel.insert(tk.END, long)
     OutputLabel.see('end')
+def updateParameters(A, C, Y):
     a_label.insert(tk.END, A)
     C_label.insert(tk.END, C)
     youngs_label.insert(tk.END, Y)
