@@ -57,7 +57,7 @@ def calibratePressure(voltage, pressure):
     intercept = regressResult.intercept
     
     voltage = []
-    pressure = []
+    pressure = [0]
 
     sleep(0.5)
     # Send slope and intercept to Arduino
@@ -82,8 +82,8 @@ def pressureSweep():
         if data.startswith("Done"):
             b = True
         if data.startswith("Time"):
-            # print(strain)
-            # print(pressure)
+            print(strain)
+            print(pressure)
             scatter(pressure, strain)
             break
         if b:
@@ -95,6 +95,8 @@ def pressureSweep():
                 pressure.append(data_float)
             except:
                 pass
+
+        
 
 
     # Update Sweep Details Text Widget
@@ -123,7 +125,7 @@ def changeSweepSettings():
     ser.write(pres_num_incr.encode())
     sleep(0.1)
 
-# Graph functions
+# Visuals functions
 def updateOutput(long, A, C, Y):
     OutputLabel.insert(tk.END, long)
     OutputLabel.see('end')
@@ -133,7 +135,6 @@ def updateOutput(long, A, C, Y):
 def scatter(stress, strain):
     ax.scatter(strain, stress, s=4, c='black')
     canvas.draw()
-    
 def analysis():
     pass
 
@@ -148,12 +149,12 @@ def threadedCalibratePressure(voltage, pressure):
 # Create dummy variables for later use
 voltageLinReg = []
 pressureLinReg = []
-pressure = []
+pressure = [0]
 long_text = "Text\n"
 a = 0
 C = 0
 Y = 0
-strain = [1.2415, 1.406, 1.572, 1.738, 1.9045, 2.071, 2.2375]
+strain = [1, 1.2415, 1.406, 1.572, 1.738, 1.9045, 2.071, 2.2375]
 
 ## Gui Interface
 # Window
