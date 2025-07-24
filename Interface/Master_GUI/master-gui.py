@@ -15,7 +15,7 @@ from matplotlib.backends.backend_tkagg import (
 import matplotlib.animation as animation
 
 
-commPort = '/dev/cu.usbmodem11201'
+commPort = '/dev/cu.usbmodem111201'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
@@ -192,8 +192,14 @@ def updateOutput(long):
     OutputLabel.insert(tk.END, long)
     OutputLabel.see('end')
 def updateParameters(A, C, Y):
+    a_label.delete(1.0, tk.END)
+    a_label.insert(tk.END, "a: ")
     a_label.insert(tk.END, A)
+    C_label.delete(1.0, tk.END)
+    C_label.insert(tk.END, "C: ")
     C_label.insert(tk.END, C)
+    youngs_label.delete(1.0, tk.END)
+    youngs_label.insert(tk.END, "Young's modulus: ")
     youngs_label.insert(tk.END, Y)
 
 # Thread functions so textbox will update in real time

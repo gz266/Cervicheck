@@ -85,7 +85,7 @@ void setup(void) {
     Serial.println("FAILED in initialization!");
     while (true);
   }
-
+  
   Serial.println("Initialized!");
 
   // Select 300 OHM resistor
@@ -105,6 +105,10 @@ void setup(void) {
 
   // Initialize DAC
   dac.begin(0x60);
+
+  // AD5933::setSettlingCycles(300);
+  // Serial.println(AD5933::readRegister(0x8A));
+  // Serial.println(AD5933::readRegister(0x8B));
 }
 
 void loop(void) {
