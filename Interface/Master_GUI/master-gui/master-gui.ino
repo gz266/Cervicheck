@@ -201,7 +201,7 @@ void pressureSweep() {
 
     Serial.print("Sweeping at Pressure (kPa): ");
     Serial.println(pressure);
-    // selectPressure(pressure);
+    selectPressure(pressure);
     int count = 0;
     // Just in case pressure is not reached
     while (abs(getPressure()-pressure) > error){

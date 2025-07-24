@@ -15,7 +15,7 @@ from matplotlib.backends.backend_tkagg import (
 import matplotlib.animation as animation
 
 
-commPort = '/dev/cu.usbmodem1421201'
+commPort = '/dev/cu.usbmodem11201'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
@@ -32,9 +32,9 @@ class Pressure(Exception):
 # # # # # #
 
 # Testing functions
-def calibratePressure(voltage, pressure):
+def calibratePressure(voltage, p):
     ser.write(b'p')
-    for i in range(14):
+    for i in range(10):
         arduinoData_string = ser.readline().decode('ascii')
         updateOutput(arduinoData_string)
         try:
@@ -43,23 +43,21 @@ def calibratePressure(voltage, pressure):
 
         except:                                             # Pass if data point is bad                               
             pass
-    for i in range(14, 26):
+    for i in range(10, 18):
         arduinoData_string = ser.readline().decode('ascii')
         updateOutput(arduinoData_string)
         try:
             arduinoData_float = float(arduinoData_string)   # Convert to float
-            pressure.append(arduinoData_float)           # Add first data points to voltage
+            p.append(arduinoData_float)           # Add first data points to voltage
 
         except:                                             # Pass if data point is bad                               
             pass
-    regressResult = scipy.stats.linregress(pressure, voltage)
-    
+    regressResult = scipy.stats.linregress(p, voltage)
     slope = regressResult.slope
     intercept = regressResult.intercept
     voltage = []
-    pressure = []
+    p = []
 
-    sleep(0.5)
     # Send slope and intercept to Arduino
     ser.write(b'r')
     slope = str(slope) + '\r'
@@ -75,36 +73,35 @@ def calibratePressure(voltage, pressure):
 def pressureSweep():
     ser.write(b's') 
     b = False
+    pressure = np.zeros(8)
     # Todo: Arduino returns stress strain data, python analyzes and plots it
     while True:
         data = ser.readline().decode('ascii')
+        # print(data)
         updateOutput(data)
         if data.startswith("Done"):
             b = True
+            i = 0
         if data.startswith("Time"):
             print(strain)
             print(pressure)
-            scatter(pressure, strain)
 
             x, y = align_data(strain, pressure)
             print(x)
             print(y)
             coefficients, modulus = analyze_data(x, y)
+            ax.scatter(x, -y, s=4, c='black')
             ax.plot(x, func(x, *coefficients), 'r-')
             canvas.draw()
             updateParameters(*coefficients, modulus)
             break
         if b:
-            try:
+            if i == 0:
+                i = i + 1
+            else:
                 data_float = float(data)
-            except:
-                pass
-            try:
-                pressure.append(data_float)
-            except:
-                pass
-
-        
+                pressure[i] = data_float
+                i = i + 1
 
 
     # Update Sweep Details Text Widget
@@ -201,11 +198,6 @@ def updateParameters(A, C, Y):
     a_label.insert(tk.END, A)
     C_label.insert(tk.END, C)
     youngs_label.insert(tk.END, Y)
-def scatter(stress, strain):
-    ax.scatter(strain, stress, s=4, c='black')
-    canvas.draw()
-def analysis():
-    pass
 
 # Thread functions so textbox will update in real time
 
@@ -218,12 +210,12 @@ def threadedCalibratePressure(voltage, pressure):
 # Create dummy variables for later use
 voltageLinReg = []
 pressureLinReg = []
-pressure = [0]
+
 long_text = "Text\n"
 a = 0
 C = 0
 Y = 0
-strain = [1, 1.2415, 1.406, 1.572, 1.738, 1.9045, 2.071, 2.2375]
+strain = np.array([1, 1.2415, 1.406, 1.572, 1.738, 1.9045, 2.071, 2.2375])
 
 ## Gui Interface
 # Window
@@ -318,7 +310,7 @@ canvas_widget.grid_columnconfigure(0, weight=1)
 o = tk.Label(frame3, text='Test Outputs')
 o.grid(column=0, row=0, sticky="nsew")
 
-OutputLabel = ScrolledText(frame3, width=30, height=10, wrap=tk.WORD, relief=tk.RAISED, borderwidth=1)
+OutputLabel = ScrolledText(frame3, width=30, height=15, wrap=tk.WORD, relief=tk.RAISED, borderwidth=1)
 OutputLabel.grid(column=0, row=1, sticky="nsew")
 
 OutputLabel.insert(tk.END, long_text)

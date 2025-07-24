@@ -60,7 +60,7 @@ def analyze_data(stretch, stress):
     return popt, eff_modulus
 
 # Strain, depends on the tissue
-ex_stress = np.array([0, -1, -2.35, -2.99, -3.96, -5.01, 0, 0])
+ex_stress = np.array([-0., -1.31, -2.01, -3.25, -4.03, -4.97, -8.07, 0])
 
 # Constants, determined by the geometry of the flex PCB
 stretch = np.array([1, 1.2415, 1.406, 1.572, 1.738, 1.9045, 2.071, 2.2375])
