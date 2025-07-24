@@ -65,10 +65,12 @@ def calibratePressure(voltage, p):
     updateOutput('Slope: '+ slope)
     updateOutput('Intercept: '+ intercept)
     updateOutput('Done!')
-    ser.write(intercept.encode())   
+    ser.write(slope.encode())   
     sleep(0.1)
-    ser.write(slope.encode())
+    ser.write(intercept.encode())
     sleep(0.1)
+    calibrateBtn.config(state='disabled')
+    sweepButton.config(state='normal')
 
 def pressureSweep():
     ser.write(b's') 
@@ -83,15 +85,10 @@ def pressureSweep():
             b = True
             i = 0
         if data.startswith("Time"):
-            print(strain)
-            print(pressure)
-
             x, y = align_data(strain, pressure)
-            print(x)
-            print(y)
             coefficients, modulus = analyze_data(x, y)
-            ax.scatter(x, -y, s=4, c='black')
             ax.plot(x, func(x, *coefficients), 'r-')
+            ax.scatter(x, -y, s=4, c='black')
             canvas.draw()
             updateParameters(*coefficients, modulus)
             break
@@ -247,6 +244,7 @@ calibrateBtn.grid(row=4, column=1)
 # Pressure Sweep Widget
 sweepButton = tk.Button(frame1, text='Pressure Sweep', command=threadedPressureSweep)
 sweepButton.grid(row=5, column=1)
+sweepButton.config(state='disabled')
 # sweepButton.config(width=8, height=1)
 
 # Set Pressure Widget
