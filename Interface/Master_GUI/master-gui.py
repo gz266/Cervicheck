@@ -1,5 +1,6 @@
 from tkinter import *
 import tkinter as tk 
+from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 import threading
 
@@ -9,13 +10,15 @@ import scipy
 import numpy as np
 from scipy.optimize import curve_fit
 
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (
      FigureCanvasTkAgg)
 import matplotlib.animation as animation
+matplotlib.use('agg')
 
 
-commPort = '/dev/cu.usbmodem111201'
+commPort = '/dev/cu.usbmodem11201'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
@@ -73,32 +76,83 @@ def calibratePressure(voltage, p):
     sweepButton.config(state='normal')
 
 def pressureSweep():
+    global j
+    print(j)
     ser.write(b's') 
     b = False
     pressure = np.zeros(8)
+    if j > 1:
+        fig_new, ax_new = plt.subplots(figsize=(3, 2), layout='constrained')
+        ax_new.set_ylim([0, 50])                              # Set Y axis limit of plot
+        ax_new.set_xlim([1, 2.5])  
+        ax_new.set_title("Stress Strain Curve")                        # Set title of figure
+        ax_new.set_ylabel("Pressure (kPa)")                              # Set title of y axis 
+        ax_new.set_xlabel("Percent Strain (%)")         # Set title of x axis
+
+        graph_new = tk.Frame()
+        notebook.add(graph_new, text = 'Sweep ' + str(j))
+
+        canvas_new = FigureCanvasTkAgg(fig_new, master=graph_new)
+        canvas_widget_new = canvas_new.get_tk_widget()
+        canvas_widget_new.grid(row=0, column=0, sticky="NSEW")
+        canvas_widget_new.grid_rowconfigure(0, weight=1)
+        canvas_widget_new.grid_columnconfigure(0, weight=1)
+
+        while True:
+            data = ser.readline().decode('ascii')
+            # print(data)
+            updateOutput(data)
+            if data.startswith("Done"):
+                b = True
+                i = 0
+            if data.startswith("Time"):
+                x, y = align_data(strain, pressure)
+                try:
+                    coefficients, modulus = analyze_data(x, y)
+                    ax_new.plot(x, func(x, *coefficients), 'r-')
+                    ax_new.scatter(x, -y, s=4, c='black')
+                    canvas_new.draw()
+                    updateParameters(*coefficients, modulus)
+                    j += 1
+                except:
+                    updateOutput("No pads were contacted")
+                break
+            if b:
+                if i == 0:
+                    i = i + 1
+                else:
+                    data_float = float(data)
+                    pressure[i] = data_float
+                    i = i + 1
+
     # Todo: Arduino returns stress strain data, python analyzes and plots it
-    while True:
-        data = ser.readline().decode('ascii')
-        # print(data)
-        updateOutput(data)
-        if data.startswith("Done"):
-            b = True
-            i = 0
-        if data.startswith("Time"):
-            x, y = align_data(strain, pressure)
-            coefficients, modulus = analyze_data(x, y)
-            ax.plot(x, func(x, *coefficients), 'r-')
-            ax.scatter(x, -y, s=4, c='black')
-            canvas.draw()
-            updateParameters(*coefficients, modulus)
-            break
-        if b:
-            if i == 0:
-                i = i + 1
-            else:
-                data_float = float(data)
-                pressure[i] = data_float
-                i = i + 1
+    else:
+        while True:
+            data = ser.readline().decode('ascii')
+            # print(data)
+            updateOutput(data)
+            if data.startswith("Done"):
+                b = True
+                i = 0
+            if data.startswith("Time"):
+                try:
+                    x, y = align_data(strain, pressure)
+                    coefficients, modulus = analyze_data(x, y)
+                    ax.plot(x, func(x, *coefficients), 'r-')
+                    ax.scatter(x, -y, s=4, c='black')
+                    canvas.draw()
+                    updateParameters(*coefficients, modulus)
+                    j += 1
+                except:
+                    updateOutput("No pads were contacted")
+                break
+            if b:
+                if i == 0:
+                    i = i + 1
+                else:
+                    data_float = float(data)
+                    pressure[i] = data_float
+                    i = i + 1
 
 
     # Update Sweep Details Text Widget
@@ -219,6 +273,7 @@ a = 0
 C = 0
 Y = 0
 strain = np.array([1, 1.2415, 1.406, 1.572, 1.738, 1.9045, 2.071, 2.2375])
+j = 1
 
 ## Gui Interface
 # Window
@@ -298,11 +353,14 @@ ax.set_ylabel("Pressure (kPa)")                              # Set title of y ax
 ax.set_xlabel("Percent Strain (%)")         # Set title of x axis
 
 # Frame to hold the canvas
-# frame = tk.Frame(frame2)
-frame2.grid(column=1, row=0, sticky="NSEW") 
-frame2.grid_rowconfigure(0, weight=1)
-frame2.grid_columnconfigure(0, weight=1)
-canvas = FigureCanvasTkAgg(fig, master=frame2)
+notebook = ttk.Notebook(frame2)
+notebook.grid(column=0, row=0, sticky='NSEW')
+graph = tk.Frame()
+notebook.add(graph, text = 'Sweep 1')
+# frame2.grid(column=1, row=0, sticky="NSEW") 
+# frame2.grid_rowconfigure(0, weight=1)
+# frame2.grid_columnconfigure(0, weight=1)
+canvas = FigureCanvasTkAgg(fig, master=graph)
 canvas_widget = canvas.get_tk_widget()
 canvas_widget.grid(row=0, column=0, sticky="NSEW")
 canvas_widget.grid_rowconfigure(0, weight=1)
