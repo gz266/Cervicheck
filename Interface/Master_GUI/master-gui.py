@@ -72,12 +72,10 @@ def calibratePressure(voltage, p):
     sleep(0.1)
     ser.write(intercept.encode())
     sleep(0.1)
-    calibrateBtn.config(state='disabled')
     sweepButton.config(state='normal')
 
 def pressureSweep():
     global j
-    print(j)
     ser.write(b's') 
     b = False
     pressure = np.zeros(8)
@@ -106,8 +104,10 @@ def pressureSweep():
                 b = True
                 i = 0
             if data.startswith("Time"):
-                x, y = align_data(strain, pressure)
+                time = float(data[6:])
+                updateTime(time)
                 try:
+                    x, y = align_data(strain, pressure)
                     coefficients, modulus = analyze_data(x, y)
                     ax_new.plot(x, func(x, *coefficients), 'r-')
                     ax_new.scatter(x, -y, s=4, c='black')
@@ -135,6 +135,8 @@ def pressureSweep():
                 b = True
                 i = 0
             if data.startswith("Time"):
+                time = float(data[6:])
+                updateTime(time)
                 try:
                     x, y = align_data(strain, pressure)
                     coefficients, modulus = analyze_data(x, y)
@@ -207,7 +209,7 @@ def analyze_data(stretch, stress):
     x = stretch
     y = stress* -1
 
-    popt, pcov = curve_fit(func, x, y, maxfev=10000)
+    popt, pcov = curve_fit(func, x, y, maxfev=100000)
     #fit_values = fit(stretch' ,cur_stress',fit_type, 'StartPoint', [1, 1]);
     #coeff = coeffvalues(fit_values)
     
@@ -255,6 +257,10 @@ def updateParameters(A, C, Y):
     youngs_label.delete(1.0, tk.END)
     youngs_label.insert(tk.END, "Young's modulus: ")
     youngs_label.insert(tk.END, Y)
+def updateTime(T):
+    time_label.delete(1.0, tk.END)
+    time_label.insert(tk.END, "Time (ms): ")
+    time_label.insert(tk.END, T)
 
 # Thread functions so textbox will update in real time
 
@@ -388,5 +394,8 @@ C_label.grid(column=0, row=3, sticky="nsew")
 youngs_label = tk.Text(frame3, height=3, width=30, relief=tk.RAISED, borderwidth=1)
 youngs_label.insert(tk.END, "Young's modulus: ")
 youngs_label.grid(column=0, row=4, sticky="nsew")
+time_label = tk.Text(frame3, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+time_label.insert(tk.END, "Time (ms): ")
+time_label.grid(column=0, row=5, sticky="nsew")
 
 win.mainloop()
