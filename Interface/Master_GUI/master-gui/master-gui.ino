@@ -106,7 +106,7 @@ void setup(void) {
   // Initialize DAC
   dac.begin(0x60);
 
-  // AD5933::setSettlingCycles(300);
+  AD5933::setSettlingCycles(2047);
   // Serial.println(AD5933::readRegister(0x8A));
   // Serial.println(AD5933::readRegister(0x8B));
 }
@@ -129,6 +129,9 @@ void loop(void) {
       } 
       Serial.print("Time: ");
       Serial.println(t2-t1);
+      for(int i=0; i < 7; i++){
+        stressStrain[i] = 0;
+      }
     }
   if(userInput == 'p'){         
       digitalWrite(greenLED, HIGH);
