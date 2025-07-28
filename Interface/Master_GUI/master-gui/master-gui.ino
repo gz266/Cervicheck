@@ -52,8 +52,8 @@ float pressure;
 
 // Pressure Control Constants
 // y = mx where y is digital value to supply DAC and x is desired pressure (-kPa)
-float slope;
-float yint;
+float slope = -79.1919;
+float yint = 36.2067;
 String data;
 const float error = 0.05;
 
@@ -85,7 +85,7 @@ void setup(void) {
     Serial.println("FAILED in initialization!");
     while (true);
   }
-
+  
   Serial.println("Initialized!");
 
   // Select 300 OHM resistor
@@ -105,6 +105,10 @@ void setup(void) {
 
   // Initialize DAC
   dac.begin(0x60);
+
+  AD5933::setSettlingCycles(2047);
+  // Serial.println(AD5933::readRegister(0x8A));
+  // Serial.println(AD5933::readRegister(0x8B));
 }
 
 void loop(void) {
@@ -125,6 +129,9 @@ void loop(void) {
       } 
       Serial.print("Time: ");
       Serial.println(t2-t1);
+      for(int i=0; i < 7; i++){
+        stressStrain[i] = 0;
+      }
     }
   if(userInput == 'p'){         
       digitalWrite(greenLED, HIGH);
@@ -150,33 +157,26 @@ void loop(void) {
     data = Serial.readStringUntil('\r');
     pres_num_incr = data.toInt();
 
-    Serial.println(pres_start);
-    Serial.println(pres_incr);
-    Serial.println(pres_num_incr);
     }
   }
 }
 
 void calibratePressure() {
   Serial.println("50");
-  Serial.println("100");
   Serial.println("150");
-  Serial.println("200");
   Serial.println("250");
   Serial.println("500");
   Serial.println("1000");
   Serial.println("1500");
   Serial.println("2000");
   Serial.println("2500");
-  Serial.println("3000");
-  Serial.println("3500");
-  for (int i = 50; i < 251; i+=50){
+  for (int i = 50; i < 251; i+=100){
     dac.setVoltage(i, false);
     delay(3000);
     // Serial.print(i);
     Serial.println(getPressure());
   }
-  for (int i = 500; i < 3501; i+=500){
+  for (int i = 500; i < 2501; i+=500){
     dac.setVoltage(i, false);
     delay(3000);
     // Serial.print(i);
@@ -201,7 +201,10 @@ void pressureSweep() {
 
     Serial.print("Sweeping at Pressure (kPa): ");
     Serial.println(pressure);
-    // selectPressure(pressure);
+    selectPressure(pressure);
+
+    Serial.print("Current Pressure (kPa): ");
+    Serial.println(getPressure());
     int count = 0;
     // Just in case pressure is not reached
     while (abs(getPressure()-pressure) > error){
@@ -289,6 +292,9 @@ void frequencySweepStressStrain() {
   }else{
     // TODO
     // Send to python that pad was not contacted
+    Serial.print("Pad ");
+    Serial.print(curPad);
+    Serial.println(" has not been contacted.");
   }
 }
 

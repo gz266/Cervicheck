@@ -1,5 +1,6 @@
 from tkinter import *
 import tkinter as tk 
+from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 import threading
 
@@ -7,14 +8,17 @@ import serial
 from time import sleep
 import scipy
 import numpy as np
+from scipy.optimize import curve_fit
 
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (
      FigureCanvasTkAgg)
 import matplotlib.animation as animation
+matplotlib.use('agg')
 
 
-commPort = 'COM11'  # Change this to your Arduino's COM port
+commPort = '/dev/cu.usbmodem1421201'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
@@ -31,9 +35,9 @@ class Pressure(Exception):
 # # # # # #
 
 # Testing functions
-def calibratePressure(voltage, pressure):
+def calibratePressure(voltage, p):
     ser.write(b'p')
-    for i in range(14):
+    for i in range(10):
         arduinoData_string = ser.readline().decode('ascii')
         updateOutput(arduinoData_string)
         try:
@@ -42,24 +46,21 @@ def calibratePressure(voltage, pressure):
 
         except:                                             # Pass if data point is bad                               
             pass
-    for i in range(14, 26):
+    for i in range(10, 18):
         arduinoData_string = ser.readline().decode('ascii')
         updateOutput(arduinoData_string)
         try:
             arduinoData_float = float(arduinoData_string)   # Convert to float
-            pressure.append(arduinoData_float)           # Add first data points to voltage
+            p.append(arduinoData_float)           # Add first data points to voltage
 
         except:                                             # Pass if data point is bad                               
             pass
-    regressResult = scipy.stats.linregress(pressure, voltage)
-    
+    regressResult = scipy.stats.linregress(p, voltage)
     slope = regressResult.slope
     intercept = regressResult.intercept
-    
     voltage = []
-    pressure = [0]
+    p = []
 
-    sleep(0.5)
     # Send slope and intercept to Arduino
     ser.write(b'r')
     slope = str(slope) + '\r'
@@ -67,36 +68,93 @@ def calibratePressure(voltage, pressure):
     updateOutput('Slope: '+ slope)
     updateOutput('Intercept: '+ intercept)
     updateOutput('Done!')
-    ser.write(intercept.encode())   
+    ser.write(slope.encode())   
     sleep(0.1)
-    ser.write(slope.encode())
+    ser.write(intercept.encode())
     sleep(0.1)
+    sweepButton.config(state='normal')
 
 def pressureSweep():
+    global j
     ser.write(b's') 
     b = False
-    # Todo: Arduino returns stress strain data, python analyzes and plots it
-    while True:
-        data = ser.readline().decode('ascii')
-        updateOutput(data)
-        if data.startswith("Done"):
-            b = True
-        if data.startswith("Time"):
-            print(strain)
-            print(pressure)
-            scatter(pressure, strain)
-            break
-        if b:
-            try:
-                data_float = float(data)
-            except:
-                pass
-            try:
-                pressure.append(data_float)
-            except:
-                pass
+    pressure = np.zeros(8)
+    if j > 1:
+        fig_new, ax_new = plt.subplots(figsize=(3, 2), layout='constrained')
+        ax_new.set_ylim([0, 50])                              # Set Y axis limit of plot
+        ax_new.set_xlim([1, 2.5])  
+        ax_new.set_title("Stress Strain Curve")                        # Set title of figure
+        ax_new.set_ylabel("Pressure (kPa)")                              # Set title of y axis 
+        ax_new.set_xlabel("Percent Strain (%)")         # Set title of x axis
 
-        
+        graph_new = tk.Frame()
+        notebook.add(graph_new, text = 'Sweep ' + str(j))
+
+        canvas_new = FigureCanvasTkAgg(fig_new, master=graph_new)
+        canvas_widget_new = canvas_new.get_tk_widget()
+        canvas_widget_new.grid(row=0, column=0, sticky="NSEW")
+        canvas_widget_new.grid_rowconfigure(0, weight=1)
+        canvas_widget_new.grid_columnconfigure(0, weight=1)
+
+        while True:
+            data = ser.readline().decode('ascii')
+            # print(data)
+            updateOutput(data)
+            if data.startswith("Done"):
+                b = True
+                i = 0
+            if data.startswith("Time"):
+                time = float(data[6:])
+                updateTime(time)
+                try:
+                    x, y = align_data(strain, pressure)
+                    coefficients, modulus = analyze_data(x, y)
+                    ax_new.plot(x, func(x, *coefficients), 'r-')
+                    ax_new.scatter(x, -y, s=4, c='black')
+                    canvas_new.draw()
+                    updateParameters(*coefficients, modulus)
+                    j += 1
+                except:
+                    updateOutput("No pads were contacted")
+                break
+            if b:
+                if i == 0:
+                    i = i + 1
+                else:
+                    data_float = float(data)
+                    pressure[i] = data_float
+                    i = i + 1
+
+    # Todo: Arduino returns stress strain data, python analyzes and plots it
+    else:
+        while True:
+            data = ser.readline().decode('ascii')
+            # print(data)
+            updateOutput(data)
+            if data.startswith("Done"):
+                b = True
+                i = 0
+            if data.startswith("Time"):
+                time = float(data[6:])
+                updateTime(time)
+                try:
+                    x, y = align_data(strain, pressure)
+                    coefficients, modulus = analyze_data(x, y)
+                    ax.plot(x, func(x, *coefficients), 'r-')
+                    ax.scatter(x, -y, s=4, c='black')
+                    canvas.draw()
+                    updateParameters(*coefficients, modulus)
+                    j += 1
+                except:
+                    updateOutput("No pads were contacted")
+                break
+            if b:
+                if i == 0:
+                    i = i + 1
+                else:
+                    data_float = float(data)
+                    pressure[i] = data_float
+                    i = i + 1
 
 
     # Update Sweep Details Text Widget
@@ -104,6 +162,62 @@ def pressureSweep():
     # User needs to be aware of what is going on during the sweep
     # Include Impedance Outputs
     # Time Elapsed
+
+def func(x, a, C):
+    return a* C * ((x ** 2) - (1 / x))* np.exp(a * ((x ** 2) + (2 / x) - 3))
+
+def align_data(stretch, stress):
+    """
+    Aligns the data based on the stretch and strain values.
+    
+    Parameters:
+    stretch (1D array): Stretch factor for the analysis.
+    stress (1D array): Strain data for the trial.
+    
+    Returns:
+    aligned_stretch (1D array): Aligned stretch values.
+    aligned_strain (1D array): Aligned stress values.
+    """
+
+    aligned_stretch = stretch
+    aligned_stress = stress
+
+    for i in range(1, len(stress)):
+        if stress[i] == 0.:
+            aligned_stress = aligned_stress[:i]
+            aligned_stretch = aligned_stretch[:i]
+            return aligned_stretch, aligned_stress
+    
+    return aligned_stretch, aligned_stress
+
+def analyze_data(stretch, stress):
+    """
+    Analyze ONE set of data based on the specified fit type and stretch.
+    
+    Parameters:
+    stretch (1D array): Stretch factor for the analysis.
+    varargin (1D array): Stress data for the trial.
+    
+    Returns:
+    popt (array): Optimal values for the parameters of the fit.
+    eff_modulus (float): Effective modulus calculated from the fit parameters.
+    """
+
+    # TODO 
+
+    eff_modulus = 0
+    x = stretch
+    y = stress* -1
+
+    popt, pcov = curve_fit(func, x, y, maxfev=100000)
+    #fit_values = fit(stretch' ,cur_stress',fit_type, 'StartPoint', [1, 1]);
+    #coeff = coeffvalues(fit_values)
+    
+    alpha_coeff = 0
+    C_coeff = 0
+    eff_modulus = popt[0]*popt[1]*(-0.052*(popt[0]**3)+0.252*(popt[0]**2)+(0.053*popt[0])+1.09)
+    
+    return popt, eff_modulus
 
 def changeSweepSettings():
     maxPres = int(presStart.get()) + int(presIncr.get()) * int(presNumIncr.get())
@@ -134,14 +248,19 @@ def updateOutput(long):
     OutputLabel.insert(tk.END, long)
     OutputLabel.see('end')
 def updateParameters(A, C, Y):
+    a_label.delete(1.0, tk.END)
+    a_label.insert(tk.END, "a: ")
     a_label.insert(tk.END, A)
+    C_label.delete(1.0, tk.END)
+    C_label.insert(tk.END, "C: ")
     C_label.insert(tk.END, C)
+    youngs_label.delete(1.0, tk.END)
+    youngs_label.insert(tk.END, "Young's modulus: ")
     youngs_label.insert(tk.END, Y)
-def scatter(stress, strain):
-    ax.scatter(strain, stress, s=4, c='black')
-    canvas.draw()
-def analysis():
-    pass
+def updateTime(T):
+    time_label.delete(1.0, tk.END)
+    time_label.insert(tk.END, "Time (ms): ")
+    time_label.insert(tk.END, T)
 
 # Thread functions so textbox will update in real time
 
@@ -154,12 +273,13 @@ def threadedCalibratePressure(voltage, pressure):
 # Create dummy variables for later use
 voltageLinReg = []
 pressureLinReg = []
-pressure = [0]
+
 long_text = "Text\n"
 a = 0
 C = 0
 Y = 0
-strain = [1, 1.2415, 1.406, 1.572, 1.738, 1.9045, 2.071, 2.2375]
+strain = np.array([1, 1.2415, 1.406, 1.572, 1.738, 1.9045, 2.071, 2.2375])
+j = 1
 
 ## Gui Interface
 # Window
@@ -191,6 +311,7 @@ calibrateBtn.grid(row=4, column=1)
 # Pressure Sweep Widget
 sweepButton = tk.Button(frame1, text='Pressure Sweep', command=threadedPressureSweep)
 sweepButton.grid(row=5, column=1)
+sweepButton.config(state='disabled')
 # sweepButton.config(width=8, height=1)
 
 # Set Pressure Widget
@@ -238,11 +359,14 @@ ax.set_ylabel("Pressure (kPa)")                              # Set title of y ax
 ax.set_xlabel("Percent Strain (%)")         # Set title of x axis
 
 # Frame to hold the canvas
-# frame = tk.Frame(frame2)
-frame2.grid(column=1, row=0, sticky="NSEW") 
-frame2.grid_rowconfigure(0, weight=1)
-frame2.grid_columnconfigure(0, weight=1)
-canvas = FigureCanvasTkAgg(fig, master=frame2)
+notebook = ttk.Notebook(frame2)
+notebook.grid(column=0, row=0, sticky='NSEW')
+graph = tk.Frame()
+notebook.add(graph, text = 'Sweep 1')
+# frame2.grid(column=1, row=0, sticky="NSEW") 
+# frame2.grid_rowconfigure(0, weight=1)
+# frame2.grid_columnconfigure(0, weight=1)
+canvas = FigureCanvasTkAgg(fig, master=graph)
 canvas_widget = canvas.get_tk_widget()
 canvas_widget.grid(row=0, column=0, sticky="NSEW")
 canvas_widget.grid_rowconfigure(0, weight=1)
@@ -254,7 +378,7 @@ canvas_widget.grid_columnconfigure(0, weight=1)
 o = tk.Label(frame3, text='Test Outputs')
 o.grid(column=0, row=0, sticky="nsew")
 
-OutputLabel = ScrolledText(frame3, width=30, height=10, wrap=tk.WORD, relief=tk.RAISED, borderwidth=1)
+OutputLabel = ScrolledText(frame3, width=30, height=15, wrap=tk.WORD, relief=tk.RAISED, borderwidth=1)
 OutputLabel.grid(column=0, row=1, sticky="nsew")
 
 OutputLabel.insert(tk.END, long_text)
@@ -270,5 +394,8 @@ C_label.grid(column=0, row=3, sticky="nsew")
 youngs_label = tk.Text(frame3, height=3, width=30, relief=tk.RAISED, borderwidth=1)
 youngs_label.insert(tk.END, "Young's modulus: ")
 youngs_label.grid(column=0, row=4, sticky="nsew")
+time_label = tk.Text(frame3, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+time_label.insert(tk.END, "Time (ms): ")
+time_label.grid(column=0, row=5, sticky="nsew")
 
 win.mainloop()
