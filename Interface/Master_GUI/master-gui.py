@@ -18,7 +18,7 @@ import matplotlib.animation as animation
 matplotlib.use('agg')
 
 
-commPort = '/dev/cu.usbmodem1301'
+commPort = '/dev/cu.usbmodem1401'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
