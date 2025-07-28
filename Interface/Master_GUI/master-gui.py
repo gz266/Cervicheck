@@ -18,7 +18,7 @@ import matplotlib.animation as animation
 matplotlib.use('agg')
 
 
-commPort = '/dev/cu.usbmodem1421201'
+commPort = 'COM11'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
@@ -140,7 +140,8 @@ def pressureSweep():
                 try:
                     x, y = align_data(strain, pressure)
                     coefficients, modulus = analyze_data(x, y)
-                    ax.plot(x, func(x, *coefficients), 'r-')
+                    xlin = np.linspace(1,x[len(x)-1], 1000)
+                    ax.plot(xlin, func(xlin, *coefficients), 'r-')
                     ax.scatter(x, -y, s=4, c='black')
                     canvas.draw()
                     updateParameters(*coefficients, modulus)
