@@ -374,9 +374,9 @@ def callback(P):
     return str.isdigit(P) or P=='' or (str(P)[0] == '-' and str.isdigit(P[1:])) or str(P) == '-'
 vcmd = (win.register(callback))
 
-presStart = tk.Entry(frame1, bd=6, width=8, validate='all', validatecommand=(vcmd, '%P'))
-presIncr = tk.Entry(frame1, bd=6, width=8, validate='all', validatecommand=(vcmd, '%P'))
-presNumIncr = tk.Entry(frame1, bd=6, width=8, validate='all', validatecommand=(vcmd, '%P'))
+presStart = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
+presIncr = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
+presNumIncr = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
 
 presStart.insert(0, "-1")
 presIncr.insert(0, "-1")
