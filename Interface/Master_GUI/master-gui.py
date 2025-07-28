@@ -14,7 +14,7 @@ from matplotlib.backends.backend_tkagg import (
 import matplotlib.animation as animation
 
 
-commPort = '/dev/cu.usbmodem1421201'
+commPort = 'COM11'  # Change this to your Arduino's COM port
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
