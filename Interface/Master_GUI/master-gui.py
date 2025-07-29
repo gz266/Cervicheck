@@ -18,7 +18,7 @@ import matplotlib.animation as animation
 matplotlib.use('agg')
 
 
-commPort = '/dev/cu.usbmodem11201'
+commPort = '/dev/cu.usbmodem1401'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
@@ -37,27 +37,40 @@ class Pressure(Exception):
 # Testing functions
 def calibratePressure(voltage, p):
     ser.write(b'p')
-    for i in range(10):
-        arduinoData_string = ser.readline().decode('ascii')
-        updateOutput(arduinoData_string)
-        try:
-            arduinoData_float = float(arduinoData_string)   # Convert to float
-            voltage.append(arduinoData_float)           # Add first data points to voltage
-
-        except:                                             # Pass if data point is bad                               
-            pass
-    for i in range(10, 18):
-        arduinoData_string = ser.readline().decode('ascii')
-        updateOutput(arduinoData_string)
-        try:
-            arduinoData_float = float(arduinoData_string)   # Convert to float
-            p.append(arduinoData_float)           # Add first data points to voltage
-
-        except:                                             # Pass if data point is bad                               
-            pass
+    v_b = False
+    p_b = False
+    i = 0
+    while True:
+        data = ser.readline().decode('ascii')
+        updateOutput(data)
+        if data.startswith("Done"):
+            break
+        if data.startswith("Voltage"):
+            v_b = True
+            p_b = False
+            i = 0
+        if data.startswith("Pressure"): 
+            v_b = False
+            p_b = True
+            i = 0
+        if v_b:
+            if i == 0:
+                i += 1
+            else:
+                i += 1
+                dataFloat = float(data)   # Convert to float
+                voltage.append(dataFloat)   # Add to voltage array
+        if p_b:
+            if i == 0:
+                i += 1
+            else: 
+                i += 1
+                dataFloat = float(data)   # Convert to float
+                p.append(dataFloat)         # Add to pressure array
     regressResult = scipy.stats.linregress(p, voltage)
     slope = regressResult.slope
     intercept = regressResult.intercept
+    r_squared = regressResult.rvalue ** 2
     voltage = []
     p = []
 
@@ -65,9 +78,10 @@ def calibratePressure(voltage, p):
     ser.write(b'r')
     slope = str(slope) + '\r'
     intercept = str(intercept) + '\r'
+    r_squared = str(r_squared) + '\r'
     updateOutput('Slope: '+ slope)
     updateOutput('Intercept: '+ intercept)
-    updateOutput('Done!')
+    updateOutput('R-Squared: ' + r_squared)
     ser.write(slope.encode())   
     sleep(0.1)
     ser.write(intercept.encode())
@@ -80,22 +94,6 @@ def pressureSweep():
     b = False
     pressure = np.zeros(8)
     if j > 1:
-        fig_new, ax_new = plt.subplots(figsize=(3, 2), layout='constrained')
-        ax_new.set_ylim([0, 50])                              # Set Y axis limit of plot
-        ax_new.set_xlim([1, 2.5])  
-        ax_new.set_title("Stress Strain Curve")                        # Set title of figure
-        ax_new.set_ylabel("Pressure (kPa)")                              # Set title of y axis 
-        ax_new.set_xlabel("Percent Strain (%)")         # Set title of x axis
-
-        graph_new = tk.Frame()
-        notebook.add(graph_new, text = 'Sweep ' + str(j))
-
-        canvas_new = FigureCanvasTkAgg(fig_new, master=graph_new)
-        canvas_widget_new = canvas_new.get_tk_widget()
-        canvas_widget_new.grid(row=0, column=0, sticky="NSEW")
-        canvas_widget_new.grid_rowconfigure(0, weight=1)
-        canvas_widget_new.grid_columnconfigure(0, weight=1)
-
         while True:
             data = ser.readline().decode('ascii')
             # print(data)
@@ -105,14 +103,45 @@ def pressureSweep():
                 i = 0
             if data.startswith("Time"):
                 time = float(data[6:])
-                updateTime(time)
+                # updateTime(time)
                 try:
                     x, y = align_data(strain, pressure)
                     coefficients, modulus = analyze_data(x, y)
+                    fig_new, ax_new = plt.subplots(figsize=(3, 2), layout='constrained')
+                    ax_new.set_ylim([0, 50])                              # Set Y axis limit of plot
+                    ax_new.set_xlim([1, 2.5])  
+                    ax_new.set_title("Stress Strain Curve")                        # Set title of figure
+                    ax_new.set_ylabel("Pressure (kPa)")                              # Set title of y axis 
+                    ax_new.set_xlabel("Percent Strain (%)")         # Set title of x axis
+
+                    graph_new = tk.Frame()
+                    notebook.add(graph_new, text = 'Sweep ' + str(j))
+
+                    canvas_new = FigureCanvasTkAgg(fig_new, master=graph_new)
+                    canvas_widget_new = canvas_new.get_tk_widget()
+                    canvas_widget_new.grid(row=0, column=0, sticky="NSEW")
+                    canvas_widget_new.grid_rowconfigure(0, weight=1)
+                    canvas_widget_new.grid_columnconfigure(0, weight=1)
                     ax_new.plot(x, func(x, *coefficients), 'r-')
                     ax_new.scatter(x, -y, s=4, c='black')
                     canvas_new.draw()
-                    updateParameters(*coefficients, modulus)
+
+                    a_label_new = tk.Text(graph_new, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+                    a_label_new.insert(tk.END, "a: ")
+                    a_label_new.grid(column=0, row=5, sticky="nsew")
+                    C_label_new = tk.Text(graph_new, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+                    C_label_new.insert(tk.END, "C: ")
+                    C_label_new.grid(column=0, row=6, sticky="nsew")
+                    youngs_label_new = tk.Text(graph_new, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+                    youngs_label_new.insert(tk.END, "Young's modulus: ")
+                    youngs_label_new.grid(column=0, row=7, sticky="nsew")
+                    time_label_new = tk.Text(graph_new, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+                    time_label_new.insert(tk.END, "Time (ms): ")
+                    time_label_new.grid(column=0, row=8, sticky="nsew")
+
+                    updateParameters(*coefficients, modulus, time, a_label_new, C_label_new, youngs_label_new, time_label_new)
+
+                    notebook.select(j-1)
                     j += 1
                 except:
                     updateOutput("No pads were contacted")
@@ -136,14 +165,15 @@ def pressureSweep():
                 i = 0
             if data.startswith("Time"):
                 time = float(data[6:])
-                updateTime(time)
+                # updateTime(time)
                 try:
                     x, y = align_data(strain, pressure)
                     coefficients, modulus = analyze_data(x, y)
-                    ax.plot(x, func(x, *coefficients), 'r-')
+                    xlin = np.linspace(1,x[len(x)-1], 1000)
+                    ax.plot(xlin, func(xlin, *coefficients), 'r-')
                     ax.scatter(x, -y, s=4, c='black')
+                    updateParameters(*coefficients, modulus, time, a_label, C_label, youngs_label, time_label)
                     canvas.draw()
-                    updateParameters(*coefficients, modulus)
                     j += 1
                 except:
                     updateOutput("No pads were contacted")
@@ -247,20 +277,39 @@ def changeSweepSettings():
 def updateOutput(long):
     OutputLabel.insert(tk.END, long)
     OutputLabel.see('end')
-def updateParameters(A, C, Y):
+def updateParameters(A, C, Y, T, a_label, C_label, youngs_label, time_label):
+    if A < 0.001:
+        formatted_A = '{:0.3e}'.format(A)
+    else:
+        formatted_A = '{:0.3f}'.format(A)
+    if C > 1000:
+        formatted_C = '{:0.3e}'.format(C)
+    else:
+        formatted_C = '{:0.3f}'.format(C)
+    formatted_Y = '{:0.3f}'.format(Y)
+    formatted_T = '{:0.0f}'.format(T)
+    # text = "a: " + str(formatted_A) + '\nC: ' + str(formatted_C) + "\nYoung's modulus: " + str(formatted_Y) + '\nTime (ms): ' + str(formatted_T)
+    # ax.text(2, 1.5, text)
     a_label.delete(1.0, tk.END)
     a_label.insert(tk.END, "a: ")
-    a_label.insert(tk.END, A)
+    a_label.insert(tk.END, formatted_A)
+    a_label.config(state='disabled')
     C_label.delete(1.0, tk.END)
     C_label.insert(tk.END, "C: ")
-    C_label.insert(tk.END, C)
+    C_label.insert(tk.END, formatted_C)
+    C_label.config(state='disabled')
     youngs_label.delete(1.0, tk.END)
     youngs_label.insert(tk.END, "Young's modulus: ")
-    youngs_label.insert(tk.END, Y)
-def updateTime(T):
+    youngs_label.insert(tk.END, formatted_Y)
+    youngs_label.config(state='disabled')
     time_label.delete(1.0, tk.END)
     time_label.insert(tk.END, "Time (ms): ")
-    time_label.insert(tk.END, T)
+    time_label.insert(tk.END, formatted_T)
+    time_label.config(state='disabled')
+# def updateTime(T):
+#     time_label.delete(1.0, tk.END)
+#     time_label.insert(tk.END, "Time (ms): ")
+#     time_label.insert(tk.END, T)
 
 # Thread functions so textbox will update in real time
 
@@ -274,7 +323,7 @@ def threadedCalibratePressure(voltage, pressure):
 voltageLinReg = []
 pressureLinReg = []
 
-long_text = "Text\n"
+long_text = ""
 a = 0
 C = 0
 Y = 0
@@ -290,12 +339,12 @@ win.grid_columnconfigure(0, weight=1)
 win.grid_columnconfigure(2, weight=1)
 win.grid_columnconfigure(4, weight=1)
 frame1 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
-frame2 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
+# frame2 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
 frame3 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
 # frame4 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
 
 frame1.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-frame2.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+# frame2.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
 frame3.grid(row=0, column=4, padx=10, pady=10, sticky="nsew")
 # frame4.grid(row=1, column=4, padx=10, pady=10, sticky="nsew")
 
@@ -311,7 +360,7 @@ calibrateBtn.grid(row=4, column=1)
 # Pressure Sweep Widget
 sweepButton = tk.Button(frame1, text='Pressure Sweep', command=threadedPressureSweep)
 sweepButton.grid(row=5, column=1)
-sweepButton.config(state='disabled')
+# sweepButton.config(state='disabled')
 # sweepButton.config(width=8, height=1)
 
 # Set Pressure Widget
@@ -320,9 +369,13 @@ set.grid(row=3, column=1)
 # set.config(width=8, height=1)
 
 # Entry widgets
-presStart = tk.Entry(frame1, bd=6, width=8)
-presIncr = tk.Entry(frame1, bd=6, width=8)
-presNumIncr = tk.Entry(frame1, bd=6, width=8)
+def callback(P):
+    return str.isdigit(P) or P=='' or (str(P)[0] == '-' and str.isdigit(P[1:])) or str(P) == '-'
+vcmd = (win.register(callback))
+
+presStart = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
+presIncr = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
+presNumIncr = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
 
 presStart.insert(0, "-1")
 presIncr.insert(0, "-1")
@@ -359,8 +412,8 @@ ax.set_ylabel("Pressure (kPa)")                              # Set title of y ax
 ax.set_xlabel("Percent Strain (%)")         # Set title of x axis
 
 # Frame to hold the canvas
-notebook = ttk.Notebook(frame2)
-notebook.grid(column=0, row=0, sticky='NSEW')
+notebook = ttk.Notebook(win)
+notebook.grid(column=2, row=0, sticky='NSEW')
 graph = tk.Frame()
 notebook.add(graph, text = 'Sweep 1')
 # frame2.grid(column=1, row=0, sticky="NSEW") 
@@ -378,24 +431,24 @@ canvas_widget.grid_columnconfigure(0, weight=1)
 o = tk.Label(frame3, text='Test Outputs')
 o.grid(column=0, row=0, sticky="nsew")
 
-OutputLabel = ScrolledText(frame3, width=30, height=15, wrap=tk.WORD, relief=tk.RAISED, borderwidth=1)
+OutputLabel = ScrolledText(frame3, width=30, height=30, wrap=tk.WORD, relief=tk.RAISED, borderwidth=1)
 OutputLabel.grid(column=0, row=1, sticky="nsew")
 
 OutputLabel.insert(tk.END, long_text)
 # OutputLabel.configure(state = 'disabled')
 
 # Text Widget
-a_label = tk.Text(frame3, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+a_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
 a_label.insert(tk.END, "a: ")
-a_label.grid(column=0, row=2, sticky="nsew")
-C_label = tk.Text(frame3, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+a_label.grid(column=0, row=5, sticky="nsew")
+C_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
 C_label.insert(tk.END, "C: ")
-C_label.grid(column=0, row=3, sticky="nsew")
-youngs_label = tk.Text(frame3, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+C_label.grid(column=0, row=6, sticky="nsew")
+youngs_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
 youngs_label.insert(tk.END, "Young's modulus: ")
-youngs_label.grid(column=0, row=4, sticky="nsew")
-time_label = tk.Text(frame3, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+youngs_label.grid(column=0, row=7, sticky="nsew")
+time_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
 time_label.insert(tk.END, "Time (ms): ")
-time_label.grid(column=0, row=5, sticky="nsew")
+time_label.grid(column=0, row=8, sticky="nsew")
 
 win.mainloop()

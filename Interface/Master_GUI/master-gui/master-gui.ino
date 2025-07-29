@@ -145,9 +145,6 @@ void loop(void) {
     slope = data.toFloat();
     data = Serial.readStringUntil('\r');
     yint = data.toFloat();
-
-    Serial.println(slope);
-    Serial.println(yint);
     }
   if(userInput == 'i'){
     data = Serial.readStringUntil('\r');
@@ -162,26 +159,26 @@ void loop(void) {
 }
 
 void calibratePressure() {
+  Serial.println("Voltage: ");
   Serial.println("50");
-  Serial.println("150");
   Serial.println("250");
   Serial.println("500");
-  Serial.println("1000");
   Serial.println("1500");
-  Serial.println("2000");
   Serial.println("2500");
-  for (int i = 50; i < 251; i+=100){
+  Serial.println("Pressure: ");
+  for (int i = 50; i < 251; i+=200){
     dac.setVoltage(i, false);
     delay(3000);
     // Serial.print(i);
     Serial.println(getPressure());
   }
-  for (int i = 500; i < 2501; i+=500){
+  for (int i = 500; i < 2501; i+=1000){
     dac.setVoltage(i, false);
     delay(3000);
     // Serial.print(i);
     Serial.println(getPressure());
   }
+  Serial.println("Done!");
 }
 // Testing Functions
 void pressureSweep() {
