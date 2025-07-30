@@ -23,7 +23,7 @@ char userInput;
 // 7.5% gel: test -1 increment, 30 increases
 int pres_start = -1;
 int pres_incr = -1;
-int pres_num_incr = 5;
+int pres_num_incr = 20;
 
 double gain[NUM_INCR + 1];
 int phase[NUM_INCR + 1];
