@@ -279,7 +279,7 @@ def updateParameters(A, C, Y, T, pads, a_label, C_label, youngs_label, time_labe
         formatted_A = '{:0.3e}'.format(A)
     else:
         formatted_A = '{:0.3f}'.format(A)
-    if C > 1000:
+    if C > 9999:
         formatted_C = '{:0.3e}'.format(C)
     else:
         formatted_C = '{:0.3f}'.format(C)
