@@ -85,6 +85,9 @@ void frequencySweepEasy() {
       // Serial.print(imag[i]);
 
       // Compute impedance
+      // phase[i] phase from the board
+      double phase_new = (int)(atan2(imag[i], real[i]) * (180.0 / M_PI)); // Convert to degrees
+      
       double magnitude = sqrt(pow(real[i], 2) + pow(imag[i], 2));
       double impedance = 1 / (magnitude * gain[i]);
 
@@ -100,7 +103,7 @@ void frequencySweepEasy() {
       Serial.print("Gain: ");
       Serial.println(gain[i],10);
       Serial.print("Phase: ");
-      Serial.println(phase[i],10);
+      Serial.println(phase_new,10);
 
 
     }
