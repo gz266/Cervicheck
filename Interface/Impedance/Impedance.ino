@@ -8,7 +8,7 @@ ad5933-test
 
 int start_freq = 10000;
 int freq_incr = 5000;
-int num_incr = 15;
+int num_incr = 5;
 int ref_resist = 270;
 
 char userInput;
@@ -58,6 +58,7 @@ void loop(void) {
       calibrateAD5933(start_freq, freq_incr, num_incr, ref_resist);
     }
     if(userInput == 'p'){
+      Serial.println("Performing impedance sweep...");
       frequencySweepEasy();
     }
     
@@ -89,6 +90,19 @@ void frequencySweepEasy() {
 
       // Serial.print("  |Z|=");
       Serial.println(impedance);
+      
+      Serial.print("R: ");
+      Serial.println(real[i],10);
+      Serial.print("I: ");
+      Serial.println(imag[i],10);
+      Serial.print("Mag: ");
+      Serial.println(magnitude,10);
+      Serial.print("Gain: ");
+      Serial.println(gain[i],10);
+      Serial.print("Phase: ");
+      Serial.println(phase[i],10);
+
+
     }
     Serial.println("Frequency sweep complete!");
   } else {

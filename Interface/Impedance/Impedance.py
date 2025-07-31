@@ -18,7 +18,7 @@ import matplotlib.animation as animation
 matplotlib.use('agg')
 
 
-commPort = '/dev/cu.usbmodem1301'
+commPort = '/dev/cu.usbmodem21401'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
@@ -37,17 +37,25 @@ def changeSweepSettings():
     sleep(0.1)
     ser.write(refRes.encode())
     sleep(0.1)
-    long_text = "Impedance Settings Changed:\nStart Frequency: " + startFreq + "(kHz)" + "\nFrequency Increment: " + freqIncr + " (kHz)" + "\nNumber of Increments: " + numIncr + "\nReference Resistance: " + refRes + " (Ohms)"
+    long_text = "Impedance Settings Changed:\nStart Frequency: " + startFreq + "(Hz)" + "\nFrequency Increment: " + freqIncr + " (kHz)" + "\nNumber of Increments: " + numIncr + "\nReference Resistance: " + refRes + " (Ohms)"
     updateOutput(long_text)
 
 def frequencySweep():
-    ser.write(b'p') 
+    ser.write(b'p')
+    frequency = [] 
+    impedance = []
+    i = 0
     while True:
         data = ser.readline().decode('ascii')
         # print(data)
         updateOutput(data)
         if data.startswith('Frequency'):
             break
+        # if i > 0:
+        #     impedance.append(float(data.strip(':').split('=')[1]))
+        #     frequency.append(int(data.split(':')[0])) 
+        # if data.startswith('Performing'):
+        #     i = 1
 
 def updateOutput(long):
     OutputLabel.insert(tk.END, long)
@@ -65,12 +73,11 @@ frame3.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
 o = tk.Label(frame3, text='Test Outputs')
 o.grid(column=0, row=0, sticky="nsew")
 
-OutputLabel = ScrolledText(frame3, width=30, height=30, wrap=tk.WORD, relief=tk.RAISED, borderwidth=1)
+OutputLabel = ScrolledText(frame3, width=60, height=30, wrap=tk.WORD, relief=tk.RAISED, borderwidth=1)
 OutputLabel.grid(column=0, row=1, sticky="nsew")
 
 OutputLabel.insert(tk.END, long_text)
 
-# OutputLabel.configure(state = 'disabled')
 win.title('Impedance Measurement Interface')
 win.minsize(200,60)
 
@@ -87,6 +94,9 @@ calibrateImpedance.grid(row=5, column=1)
 
 impedanceSweep = tk.Button(frame1, text='Impedance Sweep', command=lambda : frequencySweep())
 impedanceSweep.grid(row=6, column=1)
+
+testButton = tk.Button(frame1, text='Test Resistance', command=lambda : frequencySweep())
+testButton.grid(row=8, column=1)
 
 # Entry
 
@@ -109,11 +119,13 @@ Ref_Res.grid(column=1, row=3, sticky="nsew")
 presStartLabel = tk.Label(frame1, text='Starting Frequency (kHz)')
 presIncrLabel = tk.Label(frame1, text='Frequency Increment (kHz)')
 presNumIncrLabel = tk.Label(frame1, text='Number of Increments')
-refResLabel = tk.Label(frame1, text='Reference Resistance (ohms)')
+refResLabel = tk.Label(frame1, text='Reference Resistance (Ohms)')
+testResLabel = tk.Label(frame1, text='Test Resistance (Ohms)')
 
 presStartLabel.grid(column=0, row=0, sticky="nsew")
 presIncrLabel.grid(column=0, row=1, sticky="nsew")
 presNumIncrLabel.grid(column=0, row=2, sticky="nsew")
 refResLabel.grid(column=0, row=3, sticky="nsew")
+testResLabel.grid(column=0, row=7, sticky="nsew")
 
 win.mainloop()
