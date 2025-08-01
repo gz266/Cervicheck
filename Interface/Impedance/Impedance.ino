@@ -15,7 +15,8 @@ char userInput;
 String data;
 
 double gain[20];
-int phase[20];
+double phase[20];
+double phaseRef[20];
 
 
 void setup(void) {
@@ -34,7 +35,7 @@ void setup(void) {
     while (true)
       ;
   }
-  if (!AD5933::calibrate(gain, phase, ref_resist, num_incr + 1)) {
+  if (!AD5933::calibrate(gain, phaseRef, ref_resist, num_incr + 1)) {
     Serial.println("Calibration failed...");
     while (true);
   }
@@ -90,9 +91,11 @@ void frequencySweepEasy() {
       
       double magnitude = sqrt(pow(real[i], 2) + pow(imag[i], 2));
       double impedance = 1 / (magnitude * gain[i]);
+      phase[i] = atan2(imag[i], real[i]) * (180.0 / M_PI) - phaseRef[i]; // Convert to degrees
+
 
       // Serial.print("  |Z|=");
-      Serial.println(impedance);
+      // Serial.println(impedance);
       
       Serial.print("R: ");
       Serial.println(real[i],10);
@@ -123,7 +126,7 @@ void calibrateAD5933(int start_freq, int freq_incr, int num_incr, int reference)
   Serial.println("Re-Initialized!");
 
   // Perform calibration sweep
-  if (!AD5933::calibrate(gain, phase, reference, num_incr + 1)) {
+  if (!AD5933::calibrate(gain, phaseRef, reference, num_incr + 1)) {
     Serial.println("Re-Calibration failed...");
     while (true)
       ;
