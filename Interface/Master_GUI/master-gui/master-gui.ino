@@ -284,7 +284,7 @@ void frequencySweepStressStrain() {
 
     Serial.print("Pad ");
     Serial.print(curPad);
-    Serial.println(" has been contacted at ");
+    Serial.print(" has been contacted at ");
     Serial.print(impedance);
     Serial.println(" (ohms)!");
     curPad++;
