@@ -95,7 +95,7 @@ void frequencySweepEasy() {
 
 
       // Serial.print("  |Z|=");
-      // Serial.println(impedance);
+      Serial.println(impedance);
       
       Serial.print("R: ");
       Serial.println(real[i],10);

@@ -26,7 +26,7 @@ int pres_incr = -1;
 int pres_num_incr = 20;
 
 double gain[NUM_INCR + 1];
-int phase[NUM_INCR + 1];
+double phase[NUM_INCR + 1];
 
 int i;
 
@@ -276,7 +276,7 @@ void frequencySweepStressStrain() {
   double magnitude = sqrt(pow(real[0], 2) + pow(imag[0], 2));
   double impedance = 1 / (magnitude * gain[0]);
   
-  if ((impedance < 500) && (curPad < 8)){
+  if ((impedance < 600) && (curPad < 8)){
     stressStrain[curPad-1] = getPressure();
     // TODO 
     // Send to python that pad was contacted
@@ -284,14 +284,18 @@ void frequencySweepStressStrain() {
 
     Serial.print("Pad ");
     Serial.print(curPad);
-    Serial.println(" has been contacted!");
+    Serial.println(" has been contacted at ");
+    Serial.print(impedance);
+    Serial.println(" (ohms)!");
     curPad++;
   }else{
     // TODO
     // Send to python that pad was not contacted
     Serial.print("Pad ");
     Serial.print(curPad);
-    Serial.println(" has not been contacted.");
+    Serial.print(" has not been contacted at ");
+    Serial.print(impedance);
+    Serial.println(" (ohms)");
   }
 }
 
