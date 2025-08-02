@@ -18,7 +18,7 @@ import matplotlib.animation as animation
 matplotlib.use('agg')
 
 
-commPort = '/dev/cu.usbmodem11201'
+commPort = '/dev/cu.usbmodem2101'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
@@ -37,7 +37,7 @@ def changeSweepSettings():
     sleep(0.1)
     ser.write(refRes.encode())
     sleep(0.1)
-    long_text = "Impedance Settings Changed:\nStart Frequency: " + startFreq + "(Hz)" + "\nFrequency Increment: " + freqIncr + " (kHz)" + "\nNumber of Increments: " + numIncr + "\nReference Resistance: " + refRes + " (Ohms)"
+    long_text = "Impedance Settings Changed:\nStart Frequency: " + startFreq.strip('\r') + "(Hz)" + "\nFrequency Increment: " + freqIncr.strip('\r') + " (Hz)" + "\nNumber of Increments: " + numIncr.strip('\r') + "\nReference Resistance: " + refRes.strip('\r') + " (Ohms)"
     updateOutput(long_text)
 
 def frequencySweep():
