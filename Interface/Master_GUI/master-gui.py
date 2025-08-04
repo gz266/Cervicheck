@@ -284,9 +284,10 @@ def exportCSV():
     winput.mainloop()
 
     name = name_var.get()
-    df.to_csv(f'{name}.csv', index=False)
     long_text = "\nData exported to CSV file:" + name + ".csv"
     updateOutput(long_text)
+    df.to_csv(f'{name}.csv', index=False)
+    
 
 def reset():
     global j
@@ -440,6 +441,7 @@ deleteBtn.grid(row=5, column=0)
 deleteBtn.config(width=12, height=1)
 
 # Endoscope output
+
 cap = cv2.VideoCapture(0)
 if not cap.isOpened():
         updateOutput("Error: Could not open camera.")
