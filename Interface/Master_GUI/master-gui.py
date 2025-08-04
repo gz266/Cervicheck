@@ -20,7 +20,7 @@ matplotlib.use('agg')
 
 
 
-commPort = '/dev/cu.usbmodem101'
+commPort = '/dev/cu.usbmodem11201'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
