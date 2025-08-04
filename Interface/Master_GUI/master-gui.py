@@ -254,10 +254,20 @@ def changeSweepSettings():
     updateOutput(long_text)
 
 def exportCSV():
-    date = pd.Timestamp.now().strftime('%Y-%m-%d_%H-%M-%S')
-    df.to_csv(f'sweep_data_{date}.csv', index=False)
-    print(df)
-    long_text = "\nData exported to CSV file: sweep_data_" + date + ".csv"
+    # date = pd.Timestamp.now().strftime('%Y-%m-%d_%H-%M-%S')
+    winput = Tk()
+    winput.wm_geometry("300x100")
+    field = tk.Entry(winput, bd=6, width=30)
+    field.grid(row=1, column=0, padx=10, pady=10)
+    button = tk.Button(winput, text="Save", command=winput.destroy)
+    button.grid(row=2, column=0, padx=10, pady=10)
+    label = tk.Label(winput, text="Enter filename:")
+    label.grid(row=0, column=0, padx=10, pady=10)
+    winput.mainloop()
+    while winput.winfo_exists():
+        name = field.get()
+    df.to_csv(f'{name}.csv', index=False)
+    long_text = "\nData exported to CSV file:" + name + ".csv"
     updateOutput(long_text)
 
 def reset():
