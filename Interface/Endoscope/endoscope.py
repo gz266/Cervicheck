@@ -5,7 +5,7 @@ from PIL import Image
 from PIL import ImageTk
 import threading
 
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 if not cap.isOpened():
         print("Error: Could not open camera.")
         exit()

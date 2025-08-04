@@ -17,6 +17,9 @@ from matplotlib.backends.backend_tkagg import (
      FigureCanvasTkAgg)
 import matplotlib.animation as animation
 matplotlib.use('agg')
+import cv2
+from PIL import Image
+from PIL import ImageTk
 
 
 
@@ -253,6 +256,7 @@ def changeSweepSettings():
 def exportCSV():
     date = pd.Timestamp.now().strftime('%Y-%m-%d_%H-%M-%S')
     df.to_csv(f'sweep_data_{date}.csv', index=False)
+    print(df)
     long_text = "\nData exported to CSV file: sweep_data_" + date + ".csv"
     updateOutput(long_text)
 
@@ -268,6 +272,25 @@ def reset():
     OutputLabel.configure(state='normal')
     OutputLabel.delete(1.0, tk.END)
     OutputLabel.configure(state='disabled')
+def delete():
+    global j
+    global df
+    global notebook
+    index = notebook.index("current")
+    df.drop(df.columns[index+1], axis=1, inplace=True)
+    notebook.forget(index)
+    long_text = "\nSweep " + str(index + 1) + " deleted"
+    updateOutput(long_text)
+    if j == 2:
+        j -= 1
+        notebook.destroy()
+        notebook = ttk.Notebook(win)
+    else:
+        for i in range(index, j-2):
+            notebook.tab(i, text='Sweep ' + str(i+1))
+            df.rename(columns={df.columns[i+1]: 'Sweep ' + str(i+1)}, inplace=True)
+        j -= 1
+
 # Visuals functions
 def updateOutput(long):
     OutputLabel.configure(state='normal')
@@ -346,6 +369,7 @@ frame1.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
 frame1.grid_columnconfigure(0, weight=1)
 frame1.grid_columnconfigure(1, weight=1)
+frame1.grid_rowconfigure(6, weight=1)
 
 frame2.grid(row=0, column=4, padx=10, pady=10, sticky="nsew")
 frame2.grid_rowconfigure(0, weight=1)
@@ -374,13 +398,45 @@ set.config(width=12, height=1)
 
 # Export CSV Widget
 exportBtn = tk.Button(frame1, text='Export CSV', command=exportCSV, anchor='center')
-exportBtn.grid(row=6, column=1)
+exportBtn.grid(row=3, column=0)
 exportBtn.config(width=12, height=1)
 
 # Reset Widget
 resetBtn = tk.Button(frame1, text='Reset', command=reset, anchor='center')
-resetBtn.grid(row=7, column=1)
+resetBtn.grid(row=4, column=0)
 resetBtn.config(width=12, height=1)
+
+# Delete Widget
+deleteBtn = tk.Button(frame1, text='Delete Sweep', command=delete, anchor='center')
+deleteBtn.grid(row=5, column=0)
+deleteBtn.config(width=12, height=1)
+
+# Endoscope output
+cap = cv2.VideoCapture(0)
+if not cap.isOpened():
+        updateOutput("Error: Could not open camera.")
+        exit()
+
+photo = None
+def updateFrame():
+    global photo
+    ret, frame = cap.read()
+    if ret:
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        canvas_width = canvas.winfo_width()
+        canvas_height = canvas.winfo_height()
+
+        img = Image.fromarray(frame)
+        img = img.resize((canvas_width, canvas_height), Image.LANCZOS)
+        photo = ImageTk.PhotoImage(image=img)
+        canvas.create_image(0, 0, image=photo, anchor=tk.NW)
+    win.after(15, updateFrame)  # Schedule the next frame update
+def threadedUpdateFrame():
+    threading.Thread(target=updateFrame).start()
+
+canvas = tk.Canvas(frame1, width=30, height=70)
+canvas.grid(row=6, column=0, columnspan=2, sticky="nsew")
+threadedUpdateFrame()
 
 # Entry widgets
 def callback(P):
@@ -433,4 +489,5 @@ OutputLabel.configure(state = 'disabled')
 
 
 win.bind('<Configure>', font_resize)
+# win.bind("<Configure>", enforce_aspect)
 win.mainloop()
