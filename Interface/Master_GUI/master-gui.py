@@ -240,7 +240,6 @@ def changeSweepSettings():
         updateOutput(long_text)
         raise Pressure("Pressure must be under 50 kPa")
     ser.write(b'i')
-    global pres_start, pres_incr, pres_num_incr
     pres_start = presStart.get() + '\r'
     pres_incr = presIncr.get() + '\r'
     pres_num_incr = presNumIncr.get() + '\r'
@@ -265,6 +264,8 @@ def exportCSV():
         name_var.set(name)
         long_text = "\nData exported to CSV file: " + name + ".csv"
         updateOutput(long_text)
+        name = name_var.get()
+        df.to_csv(f'{name}.csv', index=False)
         winput.destroy()
 
     winput = tk.Toplevel()
@@ -283,10 +284,6 @@ def exportCSV():
     label.grid(row=0, column=0, padx=10, pady=10)
 
     winput.mainloop()
-
-    name = name_var.get()
-    df.to_csv(f'{name}.csv', index=False)
-    
 
 def reset():
     global j
@@ -374,9 +371,6 @@ def threadedCalibratePressure():
     threading.Thread(target=calibratePressure).start()
 
 long_text = ""
-a = 0
-C = 0
-Y = 0
 strain = np.array([1, 1.2415, 1.406, 1.572, 1.738, 1.9045, 2.071, 2.2375])
 j = 1
 
