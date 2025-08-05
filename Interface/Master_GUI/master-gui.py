@@ -263,8 +263,9 @@ def exportCSV():
         if name == None:
             name = 'sweep_data_' + date
         name_var.set(name)
+        long_text = "\nData exported to CSV file: " + name + ".csv"
+        updateOutput(long_text)
         winput.destroy()
-
 
     winput = tk.Toplevel()
     winput.wm_geometry("300x150")
@@ -284,8 +285,6 @@ def exportCSV():
     winput.mainloop()
 
     name = name_var.get()
-    long_text = "\nData exported to CSV file:" + name + ".csv"
-    updateOutput(long_text)
     df.to_csv(f'{name}.csv', index=False)
     
 
