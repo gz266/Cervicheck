@@ -66,6 +66,14 @@ void loop(void) {
       Serial.println("Performing impedance sweep...");
       frequencySweepEasy();
     }
+
+    if(userInput == 's'){
+        data = Serial.readStringUntil('\r');
+        curPad = data.toInt();
+
+        Serial.print("Set to Pad ");
+        Serial.println(curPad)
+    }
     
   }
 }
