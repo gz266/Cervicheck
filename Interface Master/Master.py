@@ -10,7 +10,7 @@ from PIL import Image, ImageTk
 import pandas as pd
 import numpy as np
 from communication import threadedCalibratePressure, threadedPressureSweep, changeSweepSettings
-from gui import updateOutput, reset, exportCSV, delete, threadedUpdateFrame, updateFrame
+from gui import updateOutput, reset, exportCSV, delete, threadedUpdateFrame, updateFrame, font_resize, callback
 
 def main():
     commPort = '/dev/cu.usbmodem11201'
@@ -51,8 +51,6 @@ def main():
     ## Frame 1 Widgets
 
     # Entry widgets
-    def callback(P):
-        return str.isdigit(P) or P=='' or (str(P)[0] == '-' and str.isdigit(P[1:])) or str(P) == '-'
     vcmd = (win.register(callback))
 
     presStart = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
@@ -116,17 +114,6 @@ def main():
     # Dynamic Text Outputs
     o = tk.Label(frame2, text='Test Outputs')
     o.grid(column=0, row=0, sticky="nsew")
-    def font_resize(event=None):
-        x = o.winfo_width()
-        y = o.winfo_height()
-        if x < 20 or y < 30:  # guard clause to avoid tiny values
-            return
-        if x < y:
-            o.config(font=("TkDefaultFont", (x-10)))
-        elif y < 40:
-            o.config(font=("TkDefaultFont", (y-20)))
-        else:
-            o.config(font=("TkDefaultFont", 20))
 
     OutputLabel = ScrolledText(frame2, width=30, height=30, wrap=tk.WORD, relief=tk.RAISED, borderwidth=1)
     OutputLabel.grid(column=0, row=1, sticky="nsew")
@@ -140,7 +127,7 @@ def main():
     photo = None
     updateFrame(canvas, win, photo, cap)
 
-    win.bind('<Configure>', font_resize)
+    win.bind('<Configure>', lambda event: font_resize(o=o))
     win.mainloop()
 
 if __name__ == "__main__":

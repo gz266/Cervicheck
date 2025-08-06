@@ -130,3 +130,18 @@ def updateFrame(canvas, win, photo, cap):
     win.after(15, lambda : updateFrame(canvas, win, photo, cap))  # Schedule the next frame update
 def threadedUpdateFrame(canvas, win, photo, cap):
     threading.Thread(target=updateFrame, args=(canvas, win, photo, cap)).start()
+
+def callback(P):
+        return str.isdigit(P) or P=='' or (str(P)[0] == '-' and str.isdigit(P[1:])) or str(P) == '-'
+
+def font_resize(o, event=None):
+        x = o.winfo_width()
+        y = o.winfo_height()
+        if x < 20 or y < 30:  # guard clause to avoid tiny values
+            return
+        if x < y:
+            o.config(font=("TkDefaultFont", (x-10)))
+        elif y < 40:
+            o.config(font=("TkDefaultFont", (y-20)))
+        else:
+            o.config(font=("TkDefaultFont", 20))
