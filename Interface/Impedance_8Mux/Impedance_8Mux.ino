@@ -42,7 +42,7 @@ void setup(void) {
   }
 
   // Initialize MUX
-  for (i = 0; i < 3; i++) {
+  for (int i = 0; i < 3; i++) {
     pinMode(sL[i], OUTPUT);
   }
   selectPad(0); // Select calibration resistor
