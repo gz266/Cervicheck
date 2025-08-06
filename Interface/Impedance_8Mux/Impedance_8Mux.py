@@ -18,7 +18,7 @@ import matplotlib.animation as animation
 matplotlib.use('agg')
 
 
-commPort = '/dev/cu.usbmodem2101'
+commPort = '/dev/cu.usbmodem11201'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
@@ -62,7 +62,7 @@ def selectPad():
     pad_num = Pad.get() + '\r'
     ser.write(pad_num.encode())
     sleep(0.1)
-    long_text = "Pad " + pad_num.strip('\r') + " Selected"
+    long_text = "Pad " + pad_num.strip('\r') + " Selected\n"
     updateOutput(long_text)
     
 def updateOutput(long):
@@ -107,7 +107,7 @@ testButton = tk.Button(frame1, text='Test Resistance', command=lambda : frequenc
 testButton.grid(row=8, column=1)
 
 setPad = tk.Button(frame1, text='Select Pad', command=lambda : selectPad())
-setPad.grid(row=9, column=1)
+setPad.grid(row=10, column=1)
 
 # Entry
 
@@ -122,12 +122,13 @@ Start_Freq.insert(0, "10000")
 Freq_Incr.insert(0, "5000")
 Num_Incr.insert(0, "5")
 Ref_Res.insert(0, "270")
-Pad.insert(0, "1")
+Pad.insert(0, "0")
 
 Start_Freq.grid(column=1, row=0, sticky="nsew")
 Freq_Incr.grid(column=1, row=1, sticky="nsew")
 Num_Incr.grid(column=1, row=2, sticky="nsew")
 Ref_Res.grid(column=1, row=3, sticky="nsew")
+Pad.grid(column=1, row=9, sticky="nsew")
 
 presStartLabel = tk.Label(frame1, text='Starting Frequency (kHz)')
 presIncrLabel = tk.Label(frame1, text='Frequency Increment (kHz)')

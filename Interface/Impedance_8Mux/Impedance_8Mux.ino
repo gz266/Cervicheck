@@ -1,7 +1,9 @@
 /*
 ad5933-test
     Reads impedance values from the AD5933 over I2C and prints them serially.
+    Use code with DAC/ADC
 */
+
 
 #include <Wire.h>
 #include "AD5933.h"
@@ -9,7 +11,7 @@ ad5933-test
 int start_freq = 10000;
 int freq_incr = 5000;
 int num_incr = 5;
-int ref_resist = 270;
+int ref_resist = 300;
 
 char userInput;
 String data;
@@ -21,14 +23,16 @@ double phaseRef[20];
 int sL[3] = { 8, 9, 10 };
 int MUXtable[8][3] = { { 1, 0, 1 }, { 1, 1, 0 }, { 0, 0, 0 }, { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 }, { 0, 1, 1 }, { 1, 1, 1 } };
 
-int curPad = 1;
+int curPad = 0;
 int padSelect;
 
 void setup(void) {
   // Begin I2C
   Wire.begin();
 
-  pinMode(A2, INPUT);
+  // Pull pin A2 to ground
+  pinMode(A2, OUTPUT);
+  digitalWrite(A2, LOW);
 
   // Begin serial at 9600 baud for output
   Serial.begin(9600);
@@ -42,7 +46,7 @@ void setup(void) {
   }
 
   // Initialize MUX
-  for (i = 0; i < 3; i++) {
+  for (int i = 0; i < 3; i++) {
     pinMode(sL[i], OUTPUT);
   }
   selectPad(0); // Select calibration resistor
@@ -55,7 +59,6 @@ void setup(void) {
 }
 
 void loop(void) {
-
   if(Serial.available()>0){
     userInput = Serial.read();   
     if(userInput == 'o'){
@@ -107,7 +110,7 @@ void frequencySweepEasy() {
 
       // Compute impedance
       // phase[i] phase from the board
-      double phase_new = (int)(atan2(imag[i], real[i]) * (180.0 / M_PI)); // Convert to degrees
+      // double phase_new = (int)(atan2(imag[i], real[i]) * (180.0 / M_PI)); // Convert to degrees
       
       double magnitude = sqrt(pow(real[i], 2) + pow(imag[i], 2));
       double impedance = 1 / (magnitude * gain[i]);
@@ -126,7 +129,7 @@ void frequencySweepEasy() {
       Serial.print("Gain: ");
       Serial.println(gain[i],10);
       Serial.print("Phase: ");
-      Serial.println(phase_new,10);
+      Serial.println(phase[i],10);
 
 
     }
