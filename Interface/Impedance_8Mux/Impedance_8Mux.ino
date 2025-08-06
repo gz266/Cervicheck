@@ -22,6 +22,7 @@ int sL[3] = { 8, 9, 10 };
 int MUXtable[8][3] = { { 1, 0, 1 }, { 1, 1, 0 }, { 0, 0, 0 }, { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 }, { 0, 1, 1 }, { 1, 1, 1 } };
 
 int curPad = 1;
+int padSelect;
 
 void setup(void) {
   // Begin I2C
@@ -39,6 +40,12 @@ void setup(void) {
     while (true)
       ;
   }
+
+  // Initialize MUX
+  for (i = 0; i < 3; i++) {
+    pinMode(sL[i], OUTPUT);
+  }
+  selectPad(0); // Select calibration resistor
   if (!AD5933::calibrate(gain, phaseRef, ref_resist, num_incr + 1)) {
     Serial.println("Calibration failed...");
     while (true);
@@ -69,10 +76,11 @@ void loop(void) {
 
     if(userInput == 's'){
         data = Serial.readStringUntil('\r');
-        curPad = data.toInt();
+        padSelect = data.toInt();
 
         Serial.print("Set to Pad ");
-        Serial.println(curPad)
+        selectPad(padSelect);
+        Serial.println(padSelect);
     }
     
   }
