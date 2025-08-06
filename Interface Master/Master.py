@@ -1,12 +1,10 @@
 from time import sleep
 import serial
-import threading
 import tkinter as tk
 from tkinter import *
 import tkinter.ttk as ttk
 import cv2
 from tkinter.scrolledtext import ScrolledText
-from PIL import Image, ImageTk
 import pandas as pd
 import numpy as np
 from communication import threadedCalibratePressure, threadedPressureSweep, changeSweepSettings

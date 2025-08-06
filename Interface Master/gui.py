@@ -1,9 +1,7 @@
-# Imports
 import tkinter as tk
 from tkinter import *
 import tkinter.ttk as ttk
 import pandas as pd
-import numpy as np
 import cv2
 from PIL import Image, ImageTk
 import threading
