@@ -57,6 +57,14 @@ def frequencySweep():
         # if data.startswith('Performing'):
         #     i = 1
 
+def selectPad():
+    ser.write(b's')
+    pad_num = Pad.get() + '\r'
+    ser.write(pad_num.encode())
+    sleep(0.1)
+    long_text = "Pad " + pad_num.strip('\r') + " Selected"
+    updateOutput(long_text)
+    
 def updateOutput(long):
     OutputLabel.insert(tk.END, long)
     OutputLabel.see('end')
@@ -98,18 +106,23 @@ impedanceSweep.grid(row=6, column=1)
 testButton = tk.Button(frame1, text='Test Resistance', command=lambda : frequencySweep())
 testButton.grid(row=8, column=1)
 
+setPad = tk.Button(frame1, text='Select Pad', command=lambda : selectPad())
+setPad.grid(row=9, column=1)
+
 # Entry
 
 Start_Freq = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
 Freq_Incr = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
 Num_Incr = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
 Ref_Res = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
+Pad = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
 
 
 Start_Freq.insert(0, "10000")
 Freq_Incr.insert(0, "5000")
 Num_Incr.insert(0, "5")
 Ref_Res.insert(0, "270")
+Pad.insert(0, "1")
 
 Start_Freq.grid(column=1, row=0, sticky="nsew")
 Freq_Incr.grid(column=1, row=1, sticky="nsew")
