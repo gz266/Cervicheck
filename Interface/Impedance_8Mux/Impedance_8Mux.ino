@@ -81,9 +81,9 @@ void loop(void) {
         data = Serial.readStringUntil('\r');
         padSelect = data.toInt();
 
-        Serial.print("Set to Pad ");
+        Serial.println("Set to Pad ");
         selectPad(padSelect);
-        Serial.println(padSelect);
+        Serial.print(padSelect);
     }
     
   }
