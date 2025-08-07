@@ -76,7 +76,7 @@ def frequencySweep():
     ax_imp.set_xlim(min(frequency), max(frequency))  
     ax_imp.set_title("Impedance Bode Plot")                        # Set title of figure
     ax_imp.set_ylabel("Impedance (Ohms)")                              # Set title of y axis 
-    ax_imp.set_xlabel("Frequency (Hz)")         # Set title of x axis
+    ax_imp.set_xlabel("Frequency (kHz)")         # Set title of x axis
     ax_imp.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(10))
     ax_imp.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax_imp.grid(True, which='both', linestyle='--', linewidth=0.5)
@@ -95,7 +95,7 @@ def frequencySweep():
     ax_phase.set_xlim(min(frequency), max(frequency))
     ax_phase.set_title("Phase Bode Plot")                        # Set title of figure
     ax_phase.set_ylabel("Phase (Degrees)")                              # Set title of y axis 
-    ax_phase.set_xlabel("Frequency (Hz)")         # Set title of x axis
+    ax_phase.set_xlabel("Frequency (kHz)")         # Set title of x axis
     ax_phase.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(10))
     ax_phase.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
     ax_phase.grid(True, which='both', linestyle='--', linewidth=0.5)
