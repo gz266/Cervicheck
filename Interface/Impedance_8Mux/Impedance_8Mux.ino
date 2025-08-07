@@ -81,9 +81,9 @@ void loop(void) {
         data = Serial.readStringUntil('\r');
         padSelect = data.toInt();
 
-        Serial.println("Set to Pad ");
+        Serial.print("Set to Pad ");
         selectPad(padSelect);
-        Serial.print(padSelect);
+        Serial.println(padSelect);
     }
     
   }
@@ -102,8 +102,9 @@ void frequencySweepEasy() {
     int cfreq = start_freq / 1000;
     for (int i = 0; i < num_incr + 1; i++, cfreq += freq_incr / 1000) {
       // Print raw frequency data
-      Serial.print(cfreq);
-      Serial.print(": Impedance = ");
+      Serial.print("Frequency: ");
+      Serial.println(cfreq);
+      Serial.print("Impedance: ");
       // Serial.print(real[i]);
       // Serial.print("/I=");
       // Serial.print(imag[i]);
@@ -120,14 +121,14 @@ void frequencySweepEasy() {
       // Serial.print("  |Z|=");
       Serial.println(impedance);
       
-      Serial.print("R: ");
-      Serial.println(real[i],10);
-      Serial.print("I: ");
-      Serial.println(imag[i],10);
-      Serial.print("Mag: ");
-      Serial.println(magnitude,10);
-      Serial.print("Gain: ");
-      Serial.println(gain[i],10);
+      // Serial.print("R: ");
+      // Serial.println(real[i],10);
+      // Serial.print("I: ");
+      // Serial.println(imag[i],10);
+      // Serial.print("Mag: ");
+      // Serial.println(magnitude,10);
+      // Serial.print("Gain: ");
+      // Serial.println(gain[i],10);
       Serial.print("Phase: ");
       Serial.println(phase[i],10);
 
