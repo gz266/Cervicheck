@@ -23,7 +23,7 @@ from PIL import ImageTk
 
 
 
-commPort = '/dev/cu.usbmodem11201'
+commPort = '/dev/cu.usbmodem101'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
