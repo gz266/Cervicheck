@@ -17,7 +17,7 @@ from matplotlib.backends.backend_tkagg import (
      FigureCanvasTkAgg)
 import matplotlib.animation as animation
 matplotlib.use('agg')
-import cv2
+# import cv2
 from PIL import Image
 from PIL import ImageTk
 
@@ -113,7 +113,7 @@ def pressureSweep():
                 coefficients, modulus = analyze_data(x, y)
                 fig, ax = plt.subplots(figsize=(3, 2), layout='constrained')
                 ax.set_ylim([0, 50])                              # Set Y axis limit of plot
-                ax.set_xlim([1, 2.5])  
+                ax.set_xlim([1, 2])  
                 ax.set_title("Stress Strain Curve")                        # Set title of figure
                 ax.set_ylabel("Pressure (kPa)")                              # Set title of y axis 
                 ax.set_xlabel("Percent Strain (%)")         # Set title of x axis
@@ -371,7 +371,8 @@ def threadedCalibratePressure():
     threading.Thread(target=calibratePressure).start()
 
 long_text = ""
-strain = np.array([1, 1.2415, 1.406, 1.572, 1.738, 1.9045, 2.071, 2.2375])
+# strain = np.array([1, 1.2415, 1.406, 1.572, 1.738, 1.9045, 2.071, 2.2375])
+strain = np.array([1, 1.17395, 1.27395, 1.37395, 1.47395, 1.57395, 1.67395, 1.77395])
 j = 1
 
 # Pandas dataframe to hold all data
@@ -435,31 +436,31 @@ deleteBtn.config(width=12, height=1)
 
 # Endoscope output
 
-cap = cv2.VideoCapture(0)
-if not cap.isOpened():
-        updateOutput("Error: Could not open camera.")
-        exit()
+# cap = cv2.VideoCapture(0)
+# if not cap.isOpened():
+#         updateOutput("Error: Could not open camera.")
+#         exit()
 
-photo = None
-def updateFrame():
-    global photo
-    ret, frame = cap.read()
-    if ret:
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        canvas_width = canvas.winfo_width()
-        canvas_height = canvas.winfo_height()
+# photo = None
+# def updateFrame():
+#     global photo
+#     ret, frame = cap.read()
+#     if ret:
+#         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+#         canvas_width = canvas.winfo_width()
+#         canvas_height = canvas.winfo_height()
 
-        img = Image.fromarray(frame)
-        img = img.resize((canvas_width, canvas_height), Image.LANCZOS)
-        photo = ImageTk.PhotoImage(image=img)
-        canvas.create_image(0, 0, image=photo, anchor=tk.NW)
-    win.after(15, updateFrame)  # Schedule the next frame update
-def threadedUpdateFrame():
-    threading.Thread(target=updateFrame).start()
+#         img = Image.fromarray(frame)
+#         img = img.resize((canvas_width, canvas_height), Image.LANCZOS)
+#         photo = ImageTk.PhotoImage(image=img)
+#         canvas.create_image(0, 0, image=photo, anchor=tk.NW)
+#     win.after(15, updateFrame)  # Schedule the next frame update
+# def threadedUpdateFrame():
+#     threading.Thread(target=updateFrame).start()
 
-canvas = tk.Canvas(frame1, width=30, height=70)
-canvas.grid(row=6, column=0, columnspan=2, sticky="nsew")
-threadedUpdateFrame()
+# canvas = tk.Canvas(frame1, width=30, height=70)
+# canvas.grid(row=6, column=0, columnspan=2, sticky="nsew")
+# threadedUpdateFrame()
 
 # Entry widgets
 def callback(P):
