@@ -230,7 +230,7 @@ def analyze_data(stretch, stress):
     return popt, eff_modulus
 
 def changeSweepSettings():
-    maxPres = int(presStart.get()) + int(presIncr.get()) * int(presNumIncr.get())
+    maxPres = int(presStart.get()) + float(presIncr.get()) * int(presNumIncr.get())
     if int(presStart.get()) > 0:
         long_text = "\nPressure must begin at 0 kPa or less"
         updateOutput(long_text)
@@ -468,7 +468,8 @@ def callback(P):
 vcmd = (win.register(callback))
 
 presStart = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
-presIncr = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
+# presIncr = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
+presIncr = tk.Entry(frame1, bd=6, width=8)
 presNumIncr = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
 
 presStart.insert(0, "-1")
