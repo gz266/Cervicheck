@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import *
 import tkinter.ttk as ttk
+from ScrollableNotebook import ScrollableNotebook
 import pandas as pd
 import cv2
 from PIL import Image, ImageTk
@@ -56,7 +57,7 @@ def updateParameters(A, C, Y, T, pads, a_label, C_label, youngs_label, time_labe
 def reset(win, OutputLabel, notebook, df, j):
     df = pd.DataFrame({'Pad number' : [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Young\'s Modulus', 'Time (ms)']})
     notebook.destroy()
-    notebook = ttk.Notebook(win)
+    notebook = ScrollableNotebook(win, tabmenu = False)
     win.grid_columnconfigure(2, weight=0)
     OutputLabel.configure(state='normal')
     OutputLabel.delete(1.0, tk.END)
