@@ -22,7 +22,7 @@ char userInput;
 // 12% gel: test -2 increment, 21 increases
 // 7.5% gel: test -1 increment, 30 increases
 int pres_start = -1;
-int pres_incr = -1;
+float pres_incr = -1;
 int pres_num_incr = 20;
 
 double gain[NUM_INCR + 1];
@@ -150,7 +150,7 @@ void loop(void) {
     data = Serial.readStringUntil('\r');
     pres_start = data.toInt();
     data = Serial.readStringUntil('\r');
-    pres_incr = data.toInt();
+    pres_incr = data.toFloat();
     data = Serial.readStringUntil('\r');
     pres_num_incr = data.toInt();
 
