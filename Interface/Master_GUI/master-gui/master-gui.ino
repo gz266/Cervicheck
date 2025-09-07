@@ -22,8 +22,9 @@ char userInput;
 // 12% gel: test -2 increment, 21 increases
 // 7.5% gel: test -1 increment, 30 increases
 int pres_start = -1;
-float pres_incr = -1;
+int pres_incr = -1;
 int pres_num_incr = 20;
+double imp_thresh = 500;
 
 double gain[NUM_INCR + 1];
 double phase[NUM_INCR + 1];
@@ -150,9 +151,11 @@ void loop(void) {
     data = Serial.readStringUntil('\r');
     pres_start = data.toInt();
     data = Serial.readStringUntil('\r');
-    pres_incr = data.toFloat();
+    pres_incr = data.toInt();
     data = Serial.readStringUntil('\r');
     pres_num_incr = data.toInt();
+    data = Serial.readStringUntil('\r');
+    imp_thresh = data.toDouble();
 
     }
   }
@@ -276,7 +279,7 @@ void frequencySweepStressStrain() {
   double magnitude = sqrt(pow(real[0], 2) + pow(imag[0], 2));
   double impedance = 1 / (magnitude * gain[0]);
   
-  if ((impedance < 600) && (curPad < 8)){
+  if ((impedance < imp_thresh) && (curPad < 8)){
     stressStrain[curPad-1] = getPressure();
     // TODO 
     // Send to python that pad was contacted

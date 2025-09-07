@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import *
 import tkinter.ttk as ttk
+from ScrollableNotebook import ScrollableNotebook
 import pandas as pd
 import cv2
 from PIL import Image, ImageTk
@@ -53,10 +54,15 @@ def updateParameters(A, C, Y, T, pads, a_label, C_label, youngs_label, time_labe
     pad_label.insert(tk.END, pad_text)
     pad_label.config(state='disabled')
 
-def reset(win, OutputLabel, notebook, df, j):
-    df = pd.DataFrame({'Pad number' : [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Young\'s Modulus', 'Time (ms)']})
+def reset(win, OutputLabel, notebook_holder, df, j):
+    notebook = notebook_holder['nb']
+    df.drop(df.index, inplace=True)    
+    df.drop(df.columns, axis=1, inplace=True)
+    df.insert(0, 'Pad number', [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Young\'s Modulus', 'Time (ms)'])
+    # df = pd.DataFrame({'Pad number' : [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Young\'s Modulus', 'Time (ms)']})
     notebook.destroy()
-    notebook = ttk.Notebook(win)
+    new_notebook = ScrollableNotebook(win, tabmenu = False)
+    notebook_holder['nb'] = new_notebook 
     win.grid_columnconfigure(2, weight=0)
     OutputLabel.configure(state='normal')
     OutputLabel.delete(1.0, tk.END)
@@ -95,7 +101,8 @@ def exportCSV(df, OutputLabel):
 
     winput.mainloop()
 
-def delete(j, df, notebook, win, OutputLabel):
+def delete(j, df, notebook_holder, win, OutputLabel):
+    notebook = notebook_holder['nb']
     index = notebook.index("current")
     df.drop(df.columns[index+1], axis=1, inplace=True)
     notebook.forget(index)
@@ -105,7 +112,8 @@ def delete(j, df, notebook, win, OutputLabel):
     if k == 2:
         j.set(1)
         notebook.destroy()
-        notebook = ttk.Notebook(win)
+        new_notebook = ScrollableNotebook(win, tabmenu = False)
+        notebook_holder['nb'] = new_notebook
     else:
         for i in range(index, k-2):
             notebook.tab(i, text='Sweep ' + str(i+1))
