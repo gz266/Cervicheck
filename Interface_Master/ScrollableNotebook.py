@@ -95,7 +95,7 @@ class ScrollableNotebook(ttk.Frame):
 
     def forget(self,tab_id):
         index = self.notebookTab.index(tab_id)
-        self.notebookContent.forget(self.__ContentTabID(tab_id))
+        self.notebookContent.forget(tab_id)
         self.notebookTab.forget(tab_id)
         self.contentsManaged[index].destroy()
         self.contentsManaged.pop(index)
@@ -124,7 +124,7 @@ class ScrollableNotebook(ttk.Frame):
     def tab(self,tab_id, option=None, **kwargs):
         kwargs_Content = kwargs.copy()
         kwargs_Content["text"] = "" # important
-        self.notebookContent.tab(self.__ContentTabID(tab_id), option=None, **kwargs_Content)
+        self.notebookContent.tab(tab_id, option=None, **kwargs_Content)
         return self.notebookTab.tab(tab_id, option=None, **kwargs)
 
     def tabs(self):

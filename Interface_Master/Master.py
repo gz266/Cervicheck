@@ -12,7 +12,7 @@ from communication import threadedCalibratePressure, threadedPressureSweep, chan
 from gui import updateOutput, reset, exportCSV, delete, threadedUpdateFrame, updateFrame, font_resize, callback
 
 def main():
-    commPort = '/dev/cu.usbmodem1301'
+    commPort = '/dev/cu.usbmodem11201'
     ser = serial.Serial(commPort, baudrate = 9600)
     sleep(2)
 
@@ -82,7 +82,7 @@ def main():
     calibrateBtn.config(width=12, height=1)
 
     # Pressure Sweep Widget
-    sweepButton = tk.Button(frame1, text='Pressure Sweep', command=lambda: threadedPressureSweep(win, ser, strain, j, df, notebook, OutputLabel), anchor='center')
+    sweepButton = tk.Button(frame1, text='Pressure Sweep', command=lambda: threadedPressureSweep(win, ser, strain, j, df, notebook_holder['nb'], OutputLabel), anchor='center')
     sweepButton.grid(row=6, column=1)
     # sweepButton.config(state='disabled')
     sweepButton.config(width=12, height=1)
@@ -98,12 +98,12 @@ def main():
     exportBtn.config(width=12, height=1)
 
     # Reset Widget
-    resetBtn = tk.Button(frame1, text='Reset', command= lambda: reset(win, OutputLabel, notebook, df, j), anchor='center')
+    resetBtn = tk.Button(frame1, text='Reset', command= lambda: reset(win, OutputLabel, notebook_holder, df, j), anchor='center')
     resetBtn.grid(row=5, column=0)
     resetBtn.config(width=12, height=1)
 
     # Delete Widget
-    deleteBtn = tk.Button(frame1, text='Delete Sweep', command=lambda : delete(j, df, notebook, win, OutputLabel), anchor='center')
+    deleteBtn = tk.Button(frame1, text='Delete Sweep', command=lambda : delete(j, df, notebook_holder, win, OutputLabel), anchor='center')
     deleteBtn.grid(row=6, column=0)
     deleteBtn.config(width=12, height=1)
 
@@ -112,6 +112,8 @@ def main():
 
     # Notebook for graphs (to be used when graph is actually produced)
     notebook = ScrollableNotebook(win, tabmenu = False)
+    notebook_holder = {}
+    notebook_holder['nb'] = notebook
 
     ## Frame 2 Widgets
 
