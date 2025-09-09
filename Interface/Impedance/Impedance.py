@@ -18,7 +18,7 @@ import matplotlib.animation as animation
 matplotlib.use('agg')
 
 
-commPort = '/dev/cu.usbmodem11201'
+commPort = '/dev/cu.usbmodem101'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
@@ -38,6 +38,15 @@ def changeSweepSettings():
     ser.write(refRes.encode())
     sleep(0.1)
     long_text = "Impedance Settings Changed:\nStart Frequency: " + startFreq.strip('\r') + "(Hz)" + "\nFrequency Increment: " + freqIncr.strip('\r') + " (Hz)" + "\nNumber of Increments: " + numIncr.strip('\r') + "\nReference Resistance: " + refRes.strip('\r') + " (Ohms)"
+    updateOutput(long_text)
+
+def setChannel():
+    ser.write(b'c')
+    global Channel
+    channel = Channel.get() + '\r'
+    ser.write(channel.encode())
+    sleep(0.1)
+    long_text = "Channel Set to: " + channel.strip('\r') + "\n"
     updateOutput(long_text)
 
 def frequencySweep():
@@ -66,6 +75,10 @@ long_text = ""
 win = Tk() 
 frame1 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
 frame1.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+frame2 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
+frame2.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+
 frame3 = tk.Frame(win, relief=tk.RAISED, borderwidth=1) 
 frame3.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
 
@@ -95,8 +108,8 @@ calibrateImpedance.grid(row=5, column=1)
 impedanceSweep = tk.Button(frame1, text='Impedance Sweep', command=lambda : frequencySweep())
 impedanceSweep.grid(row=6, column=1)
 
-testButton = tk.Button(frame1, text='Test Resistance', command=lambda : frequencySweep())
-testButton.grid(row=8, column=1)
+muxChannel = tk.Button(frame2, text='Set Channel', command=lambda : setChannel())
+muxChannel.grid(row=3, column=0)
 
 # Entry
 
@@ -105,27 +118,35 @@ Freq_Incr = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcm
 Num_Incr = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
 Ref_Res = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
 
+Channel = tk.Entry(frame2, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
 
 Start_Freq.insert(0, "10000")
 Freq_Incr.insert(0, "5000")
 Num_Incr.insert(0, "5")
 Ref_Res.insert(0, "270")
 
+Channel.insert(0, "0")
+
 Start_Freq.grid(column=1, row=0, sticky="nsew")
 Freq_Incr.grid(column=1, row=1, sticky="nsew")
 Num_Incr.grid(column=1, row=2, sticky="nsew")
 Ref_Res.grid(column=1, row=3, sticky="nsew")
 
+Channel.grid(column=0, row=2, sticky="nsew")
+
 presStartLabel = tk.Label(frame1, text='Starting Frequency (kHz)')
 presIncrLabel = tk.Label(frame1, text='Frequency Increment (kHz)')
 presNumIncrLabel = tk.Label(frame1, text='Number of Increments')
 refResLabel = tk.Label(frame1, text='Reference Resistance (Ohms)')
-testResLabel = tk.Label(frame1, text='Test Resistance (Ohms)')
+
+channelLabel = tk.Label(frame2, text='Channel (0-15)')
+
 
 presStartLabel.grid(column=0, row=0, sticky="nsew")
 presIncrLabel.grid(column=0, row=1, sticky="nsew")
 presNumIncrLabel.grid(column=0, row=2, sticky="nsew")
 refResLabel.grid(column=0, row=3, sticky="nsew")
-testResLabel.grid(column=0, row=7, sticky="nsew")
+
+channelLabel.grid(column=0, row=0, sticky="nsew")
 
 win.mainloop()
