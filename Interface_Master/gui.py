@@ -6,13 +6,14 @@ import pandas as pd
 import cv2
 from PIL import Image, ImageTk
 import threading
+import communication
 
 def updateOutput(long, OutputLabel):
     OutputLabel.configure(state='normal')
     OutputLabel.insert(tk.END, long)
     OutputLabel.see('end')
     OutputLabel.configure(state='disabled')
-def updateParameters(A, C, Y, T, pads, a_label, C_label, youngs_label, time_label, pad_label, df, j):
+def updateParameters(A, C, Y, T, pads, a_label, C_label, eff_mod_label, time_label, pad_label, df, j):
     if A < 0.001:
         formatted_A = '{:0.3e}'.format(A)
     else:
@@ -39,11 +40,11 @@ def updateParameters(A, C, Y, T, pads, a_label, C_label, youngs_label, time_labe
     C_label.insert(tk.END, "C: ")
     C_label.insert(tk.END, formatted_C)
     C_label.config(state='disabled')
-    youngs_label.config(state='normal')
-    youngs_label.delete(1.0, tk.END)
-    youngs_label.insert(tk.END, "Young's modulus: ")
-    youngs_label.insert(tk.END, formatted_Y)
-    youngs_label.config(state='disabled')
+    eff_mod_label.config(state='normal')
+    eff_mod_label.delete(1.0, tk.END)
+    eff_mod_label.insert(tk.END, "Effective modulus: ")
+    eff_mod_label.insert(tk.END, formatted_Y)
+    eff_mod_label.config(state='disabled')
     time_label.config(state='normal')
     time_label.delete(1.0, tk.END)
     time_label.insert(tk.END, "Time (ms): ")
@@ -58,8 +59,7 @@ def reset(win, OutputLabel, notebook_holder, df, j):
     notebook = notebook_holder['nb']
     df.drop(df.index, inplace=True)    
     df.drop(df.columns, axis=1, inplace=True)
-    df.insert(0, 'Pad number', [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Young\'s Modulus', 'Time (ms)'])
-    # df = pd.DataFrame({'Pad number' : [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Young\'s Modulus', 'Time (ms)']})
+    df.insert(0, 'Pad number', [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Time (ms)'])
     notebook.destroy()
     new_notebook = ScrollableNotebook(win, tabmenu = False)
     notebook_holder['nb'] = new_notebook 
@@ -133,9 +133,18 @@ def updateFrame(canvas, win, photo, cap):
         img = img.resize((canvas_width, canvas_height), Image.LANCZOS)
         photo = ImageTk.PhotoImage(image=img)
         canvas.create_image(0, 0, image=photo, anchor=tk.NW)
-    win.after(15, lambda : updateFrame(canvas, win, photo, cap))  # Schedule the next frame update
+        win.after(15, lambda : updateFrame(canvas, win, photo, cap))  # Schedule the next frame update
+    
 def threadedUpdateFrame(canvas, win, photo, cap):
     threading.Thread(target=updateFrame, args=(canvas, win, photo, cap)).start()
+
+def openCamera(canvas, win, OutputLabel, btn, ser, strain, j, df, notebook_holder):
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        updateOutput("Error: Could not open camera.", OutputLabel)
+    photo = None
+    updateFrame(canvas, win, photo, cap)
+    btn.config(text="Pressure Sweep", command=lambda: communication.threadedPressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn))
 
 def callback(P):
         return str.isdigit(P) or P=='' or (str(P)[0] == '-' and str.isdigit(P[1:])) or str(P) == '-'
