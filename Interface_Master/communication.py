@@ -87,7 +87,7 @@ def pressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, ca
             time = float(data[6:])
             try:
                 x, y = align_data(strain, pressure)
-                coefficients, modulus = analyze_data(x, y)
+                coefficients, eff_mod, youngs_mod = analyze_data(x, y)
                 fig, ax = plt.subplots(figsize=(3, 2), layout='constrained')
                 ax.set_ylim([0, 50])                              # Set Y axis limit of plot
                 ax.set_xlim([1, 2.5])  
@@ -123,14 +123,17 @@ def pressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, ca
                 eff_mod_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
                 eff_mod_label.grid(column=0, row=7, sticky="nsew")
                 eff_mod_label.config(state='disabled')
+                youngs_mod_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+                youngs_mod_label.grid(column=1, row=8, sticky="nsew")
+                youngs_mod_label.config(state='disabled')
                 time_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
-                time_label.grid(column=0, row=8, sticky="nsew")
+                time_label.grid(column=0, row=9, sticky="nsew")
                 time_label.config(state='disabled')
-                pad_label = tk.Text(graph, height=12, width=30, relief=tk.RAISED, borderwidth=1)
+                pad_label = tk.Text(graph, height=15, width=30, relief=tk.RAISED, borderwidth=1)
                 pad_label.grid(column=1, row=5, rowspan=4, sticky="nsew")
                 pad_label.config(state='disabled')
 
-                updateParameters(*coefficients, modulus, time, pressure, a_label, C_label, eff_mod_label, time_label, pad_label, df, j)
+                updateParameters(*coefficients, eff_mod, time, pressure, a_label, C_label, eff_mod_label, time_label, pad_label, df, j)
 
                 notebook.select(k-1)
                 j.set(k+1)

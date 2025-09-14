@@ -19,7 +19,7 @@ def main():
     strain = np.array([1, 1.2415, 1.406, 1.572, 1.738, 1.9045, 2.071, 2.2375])
 
     # Pandas dataframe to hold all data
-    data = {'Pad number' : [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Time (ms)']}
+    data = {'Pad number' : [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Young\'s Modulus', 'Time (ms)']}
     df = pd.DataFrame(data)
 
     ## Gui Interface

@@ -57,4 +57,20 @@ def analyze_data(stretch, stress):
     C_coeff = 0
     eff_modulus = popt[0]*popt[1]*(-0.052*(popt[0]**3)+0.252*(popt[0]**2)+(0.053*popt[0])+1.09)
 
-    return popt, eff_modulus
+    t = symbols('t')
+    f = func(x, *popt)
+    d2f = diff(f, t, 2)
+
+    youngs_stretch = []
+    youngs_stress = []
+
+    for i in range(len(x)):
+        if d2f(x[i]) in range (-1, 1):
+            youngs_stretch.append(x[i])
+            youngs_stress.append(y[i])
+        else:
+            break
+    regressResult = scipy.stats.linregress(youngs_stretch, youngs_stress)
+    youngs_modulus = regressResult.slope
+
+    return popt, eff_modulus, youngs_modulus
