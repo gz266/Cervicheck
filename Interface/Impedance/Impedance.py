@@ -18,9 +18,9 @@ import matplotlib.animation as animation
 matplotlib.use('agg')
 
 
-commPort = '/dev/cu.usbmodem101'
-ser = serial.Serial(commPort, baudrate = 9600)
-sleep(2)
+#commPort = '/dev/cu.usbmodem101'
+# ser = serial.Serial(commPort, baudrate = 9600)
+# sleep(2)
 
 def changeSweepSettings():
     ser.write(b'o')
