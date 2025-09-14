@@ -12,8 +12,9 @@ from matplotlib.backends.backend_tkagg import (
      FigureCanvasTkAgg)
 import matplotlib.animation as animation
 matplotlib.use('agg')
+import cv2
 from data_analysis import align_data, analyze_data, func
-from gui import updateOutput, updateParameters
+from gui import updateOutput, updateParameters, threadedUpdateFrame, openCamera
 
 
 def calibratePressure(ser, OutputLabel):
@@ -69,7 +70,9 @@ def calibratePressure(ser, OutputLabel):
     sleep(0.1)
     # sweepButton.config(state='normal')
 
-def pressureSweep(win, ser, strain, j, df, notebook, OutputLabel):
+def pressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn):
+    cap.release()
+    notebook = notebook_holder['nb']
     ser.write(b's') 
     b = False
     pressure = np.zeros(8)
@@ -82,57 +85,57 @@ def pressureSweep(win, ser, strain, j, df, notebook, OutputLabel):
             i = 0
         if data.startswith("Time"):
             time = float(data[6:])
-            # try:
-            x, y = align_data(strain, pressure)
-            coefficients, modulus = analyze_data(x, y)
-            fig, ax = plt.subplots(figsize=(3, 2), layout='constrained')
-            ax.set_ylim([0, 50])                              # Set Y axis limit of plot
-            ax.set_xlim([1, 2.5])  
-            ax.set_title("Stress Strain Curve")                        # Set title of figure
-            ax.set_ylabel("Pressure (kPa)")                              # Set title of y axis 
-            ax.set_xlabel("Percent Strain (%)")         # Set title of x axis
+            try:
+                x, y = align_data(strain, pressure)
+                coefficients, modulus = analyze_data(x, y)
+                fig, ax = plt.subplots(figsize=(3, 2), layout='constrained')
+                ax.set_ylim([0, 50])                              # Set Y axis limit of plot
+                ax.set_xlim([1, 2.5])  
+                ax.set_title("Stress Strain Curve")                        # Set title of figure
+                ax.set_ylabel("Pressure (kPa)")                              # Set title of y axis 
+                ax.set_xlabel("Percent Strain (%)")         # Set title of x axis
 
-            if k == 1:
-                notebook.grid(column=2, row=0, sticky='NSEW')
-                win.grid_columnconfigure(2, weight=1)
-                notebook.grid_rowconfigure(0, weight=1)
-                notebook.grid_columnconfigure(0, weight=1)
-            graph = tk.Frame()
-            notebook.add(graph, text = 'Sweep ' + str(k))
-            graph.grid_rowconfigure(0, weight=1)
-            graph.grid_columnconfigure(0, weight=1)
-            graph.grid_columnconfigure(1, weight=1)
-            canvas_new = FigureCanvasTkAgg(fig, master=graph)
-            canvas_widget_new = canvas_new.get_tk_widget()
-            canvas_widget_new.grid(row=0, column=0, columnspan=2, sticky="NSEW")
-            canvas_widget_new.grid_rowconfigure(0, weight=1)
-            canvas_widget_new.grid_columnconfigure(0, weight=1)
-            ax.plot(x, func(x, *coefficients), 'r-')
-            ax.scatter(x, -y, s=4, c='black')
-            canvas_new.draw()
+                if k == 1:
+                    notebook.grid(column=2, row=0, sticky='NSEW')
+                    win.grid_columnconfigure(2, weight=1)
+                    notebook.grid_rowconfigure(0, weight=1)
+                    notebook.grid_columnconfigure(0, weight=1)
+                graph = tk.Frame()
+                notebook.add(graph, text = 'Sweep ' + str(k))
+                graph.grid_rowconfigure(0, weight=1)
+                graph.grid_columnconfigure(0, weight=1)
+                graph.grid_columnconfigure(1, weight=1)
+                canvas_new = FigureCanvasTkAgg(fig, master=graph)
+                canvas_widget_new = canvas_new.get_tk_widget()
+                canvas_widget_new.grid(row=0, column=0, columnspan=2, sticky="NSEW")
+                canvas_widget_new.grid_rowconfigure(0, weight=1)
+                canvas_widget_new.grid_columnconfigure(0, weight=1)
+                ax.plot(x, func(x, *coefficients), 'r-')
+                ax.scatter(x, -y, s=4, c='black')
+                canvas_new.draw()
 
-            a_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
-            a_label.grid(column=0, row=5, sticky="nsew")
-            a_label.config(state='disabled')
-            C_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
-            C_label.grid(column=0, row=6, sticky="nsew")
-            C_label.config(state='disabled')
-            youngs_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
-            youngs_label.grid(column=0, row=7, sticky="nsew")
-            youngs_label.config(state='disabled')
-            time_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
-            time_label.grid(column=0, row=8, sticky="nsew")
-            time_label.config(state='disabled')
-            pad_label = tk.Text(graph, height=12, width=30, relief=tk.RAISED, borderwidth=1)
-            pad_label.grid(column=1, row=5, rowspan=4, sticky="nsew")
-            pad_label.config(state='disabled')
+                a_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+                a_label.grid(column=0, row=5, sticky="nsew")
+                a_label.config(state='disabled')
+                C_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+                C_label.grid(column=0, row=6, sticky="nsew")
+                C_label.config(state='disabled')
+                eff_mod_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+                eff_mod_label.grid(column=0, row=7, sticky="nsew")
+                eff_mod_label.config(state='disabled')
+                time_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+                time_label.grid(column=0, row=8, sticky="nsew")
+                time_label.config(state='disabled')
+                pad_label = tk.Text(graph, height=12, width=30, relief=tk.RAISED, borderwidth=1)
+                pad_label.grid(column=1, row=5, rowspan=4, sticky="nsew")
+                pad_label.config(state='disabled')
 
-            updateParameters(*coefficients, modulus, time, pressure, a_label, C_label, youngs_label, time_label, pad_label, df, j)
+                updateParameters(*coefficients, modulus, time, pressure, a_label, C_label, eff_mod_label, time_label, pad_label, df, j)
 
-            notebook.select(k-1)
-            j.set(k+1)
-            # except:
-                # updateOutput("No pads were contacted\n", OutputLabel)
+                notebook.select(k-1)
+                j.set(k+1)
+            except:
+                updateOutput("No pads were contacted\n", OutputLabel)
             break
         if b:
             if i == 0:
@@ -141,6 +144,8 @@ def pressureSweep(win, ser, strain, j, df, notebook, OutputLabel):
                 data_float = float(data)
                 pressure[i] = data_float
                 i = i + 1
+    btn.config(text="Open Camera", command=lambda: openCamera(canvas, win, OutputLabel, btn, ser, strain, j, df, notebook_holder))
+    
 
 def changeSweepSettings(presStart, presIncr, presNumIncr, impThresh, ser, OutputLabel):
     maxPres = int(presStart.get()) + int(presIncr.get()) * int(presNumIncr.get())
@@ -170,8 +175,8 @@ def changeSweepSettings(presStart, presIncr, presNumIncr, impThresh, ser, Output
 
 def threadedCalibratePressure(ser, OutputLabel):
     threading.Thread(target=calibratePressure, args=(ser, OutputLabel)).start()
-def threadedPressureSweep(win, ser, strain, j, df, notebook, OutputLabel):
-    threading.Thread(target=pressureSweep, args=(win, ser, strain, j, df, notebook, OutputLabel)).start()
+def threadedPressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn):
+    threading.Thread(target=pressureSweep, args=(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn)).start()
 
 # Exception
 class Pressure(Exception):
