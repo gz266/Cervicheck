@@ -9,17 +9,17 @@ from ScrollableNotebook import ScrollableNotebook
 import pandas as pd
 import numpy as np
 from communication import threadedCalibratePressure, threadedPressureSweep, changeSweepSettings
-from gui import updateOutput, reset, exportCSV, delete, threadedUpdateFrame, updateFrame, font_resize, callback
+from gui import updateOutput, reset, exportCSV, delete, threadedUpdateFrame, updateFrame, font_resize, callback, openCamera
 
 def main():
-    commPort = '/dev/cu.usbmodem11201'
+    commPort = '/dev/cu.usbmodem1301'
     ser = serial.Serial(commPort, baudrate = 9600)
     sleep(2)
 
     strain = np.array([1, 1.2415, 1.406, 1.572, 1.738, 1.9045, 2.071, 2.2375])
 
     # Pandas dataframe to hold all data
-    data = {'Pad number' : [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Young\'s Modulus', 'Time (ms)']}
+    data = {'Pad number' : [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Time (ms)']}
     df = pd.DataFrame(data)
 
     ## Gui Interface
@@ -82,10 +82,11 @@ def main():
     calibrateBtn.config(width=12, height=1)
 
     # Pressure Sweep Widget
-    sweepButton = tk.Button(frame1, text='Pressure Sweep', command=lambda: threadedPressureSweep(win, ser, strain, j, df, notebook_holder['nb'], OutputLabel), anchor='center')
+    sweepButton = tk.Button(frame1, text='Open Camera', command=lambda: openCamera(canvas, win, OutputLabel, sweepButton, ser, strain, j, df, notebook_holder), anchor='center')
     sweepButton.grid(row=6, column=1)
     # sweepButton.config(state='disabled')
     sweepButton.config(width=12, height=1)
+    sweepButton.config()
 
     # Set Pressure Widget
     set = tk.Button(frame1, text="Set Sweep Settings", command=lambda : changeSweepSettings(presStart, presIncr, presNumIncr, impThresh, ser, OutputLabel), anchor='center')
@@ -126,12 +127,7 @@ def main():
 
     OutputLabel.configure(state = 'disabled')
 
-    cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-            updateOutput("Error: Could not open camera.", OutputLabel)
-            exit()
-    photo = None
-    updateFrame(canvas, win, photo, cap)
+    
 
     win.bind('<Configure>', lambda event: font_resize(o=o))
     win.mainloop()

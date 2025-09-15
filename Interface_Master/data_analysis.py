@@ -1,5 +1,7 @@
 import numpy as np
+import scipy
 from scipy.optimize import curve_fit
+from sympy import symbols, diff
 
 def func(x, a, C):
     return a* C * ((x ** 2) - (1 / x))* np.exp(a * ((x ** 2) + (2 / x) - 3))
@@ -54,5 +56,5 @@ def analyze_data(stretch, stress):
     alpha_coeff = 0
     C_coeff = 0
     eff_modulus = popt[0]*popt[1]*(-0.052*(popt[0]**3)+0.252*(popt[0]**2)+(0.053*popt[0])+1.09)
-    
+
     return popt, eff_modulus
