@@ -3,7 +3,6 @@ import serial
 import tkinter as tk
 from tkinter import *
 import tkinter.ttk as ttk
-import cv2
 from tkinter.scrolledtext import ScrolledText
 from ScrollableNotebook import ScrollableNotebook
 import pandas as pd
