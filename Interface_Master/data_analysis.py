@@ -1,7 +1,7 @@
 import numpy as np
 import scipy
 from scipy.optimize import curve_fit
-from sympy import symbols, diff
+from sympy import symbols, diff, lambdify
 
 def func(x, a, C):
     return a* C * ((x ** 2) - (1 / x))* np.exp(a * ((x ** 2) + (2 / x) - 3))
@@ -60,17 +60,19 @@ def analyze_data(stretch, stress):
     t = symbols('t')
     f = func(x, *popt)
     d2f = diff(f, t, 2)
+    d2f_func = lambdify(t, d2f, 'numpy')
 
     youngs_stretch = []
     youngs_stress = []
 
     for i in range(len(x)):
-        if d2f(x[i]) in range (-1, 1):
+        if d2f_func(x[i]) in range (-1, 1):
             youngs_stretch.append(x[i])
             youngs_stress.append(y[i])
         else:
             break
     regressResult = scipy.stats.linregress(youngs_stretch, youngs_stress)
     youngs_modulus = regressResult.slope
+    intercept = regressResult.intercept
 
-    return popt, eff_modulus, youngs_modulus
+    return popt, eff_modulus, youngs_modulus, intercept
