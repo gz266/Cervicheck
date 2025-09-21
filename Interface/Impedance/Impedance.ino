@@ -10,6 +10,7 @@ int start_freq = 10000;
 int freq_incr = 5000;
 int num_incr = 5;
 int ref_resist = 270;
+int channel = 0;
 
 char userInput;
 String data;
@@ -18,13 +19,20 @@ double gain[20];
 double phase[20];
 double phaseRef[20];
 
+int sL[4] = {7, 6, 5, 4};
+
+int MUXtable[16][4] = { { 0, 0, 0, 0 }, { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 1, 1, 0, 0 }, { 0, 0, 1, 0 }, { 1, 0, 1, 0 }, { 0, 1, 1, 0 }, { 1, 1, 1, 0 }, { 0, 0, 0, 1 }, { 1, 0, 0, 1}, { 0, 1, 0, 1 }, { 1, 1, 0, 1 }, { 0, 0, 1, 1 }, { 1, 0, 1, 1}, { 0, 1, 1, 1 }, { 1, 1, 1, 1 }};
+
 
 void setup(void) {
   // Begin I2C
   Wire.begin();
 
-  pinMode(A2, INPUT);
-
+  pinMode(4, OUTPUT);
+  pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
+  
   // Begin serial at 9600 baud for output
   Serial.begin(9600);
   Serial.println("AD5933 Test Started!");
@@ -44,7 +52,6 @@ void setup(void) {
 }
 
 void loop(void) {
-
   if(Serial.available()>0){
     userInput = Serial.read();   
     if(userInput == 'o'){
@@ -62,8 +69,15 @@ void loop(void) {
       Serial.println("Performing impedance sweep...");
       frequencySweepEasy();
     }
-    
+    if(userInput == 'c'){
+      data = Serial.readStringUntil('\r');
+      channel = data.toInt();
+      Serial.print("Setting Channel");
+      Serial.println(channel);
+      selectPad(channel);
+    }
   }
+
 }
 
 // Easy way to do a frequency sweep. Does an entire frequency sweep at once and
@@ -96,18 +110,6 @@ void frequencySweepEasy() {
 
       // Serial.print("  |Z|=");
       Serial.println(impedance);
-      
-      Serial.print("R: ");
-      Serial.println(real[i],10);
-      Serial.print("I: ");
-      Serial.println(imag[i],10);
-      Serial.print("Mag: ");
-      Serial.println(magnitude,10);
-      Serial.print("Gain: ");
-      Serial.println(gain[i],10);
-      Serial.print("Phase: ");
-      Serial.println(phase_new,10);
-
 
     }
     Serial.println("Frequency sweep complete!");
@@ -133,4 +135,13 @@ void calibrateAD5933(int start_freq, int freq_incr, int num_incr, int reference)
   }
   Serial.println("Re-Calibrated!");
 
+}
+
+// Mux Control Function
+void selectPad(int p) {
+  // Pad 0 is calibration resistor, Pad 1-7 are on flex pcb
+  digitalWrite(sL[0], MUXtable[p][0]);
+  digitalWrite(sL[1], MUXtable[p][1]);
+  digitalWrite(sL[2], MUXtable[p][2]);
+  digitalWrite(sL[3], MUXtable[p][3]);
 }
