@@ -18,7 +18,7 @@ import matplotlib.animation as animation
 matplotlib.use('agg')
 
 
-commPort = '/dev/cu.usbmodem2101'
+commPort = '/dev/cu.usbmodem101'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
@@ -123,7 +123,7 @@ Channel = tk.Entry(frame2, bd=6, width=8, validate='key', validatecommand=(vcmd,
 Start_Freq.insert(0, "10000")
 Freq_Incr.insert(0, "5000")
 Num_Incr.insert(0, "5")
-Ref_Res.insert(0, "270")
+Ref_Res.insert(0, "330")
 
 Channel.insert(0, "0")
 
