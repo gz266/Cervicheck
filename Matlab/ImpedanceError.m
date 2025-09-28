@@ -109,3 +109,61 @@ set(gca,'XTick',1:length(colLabels),'XTickLabel',colLabels, ...
 xlabel('Columns'); ylabel('Rows');
 title('Percent Error Color Map','FontSize',16,'FontWeight','bold');
 axis equal tight;
+
+%% 5600 - 12000
+
+% Data table
+data = [ ...
+     0            -17.53786667  -28.45322222  -36.44045455  -46.0097037;
+    16.05958333    0            -10.56655556  -20.55054545  -32.51211111;
+    34.096        15.54066667    3.332055556   -8.203545455 -22.02407407;
+    52.25008333   31.18266667   13.53805556    4.223909091  -11.46759259;
+    71.971        34.73706667   28.24466667   17.72404545    0];
+
+
+rowLabels = [12000 15000 18000 22000 27000]; 
+colLabels = [12000 15000 18000 22000 27000];
+
+% Initialize color matrix
+colors = zeros([size(data), 3]);
+
+% Assign colors based on conditions
+for i = 1:size(data,1)
+    for j = 1:size(data,2)
+        val = abs(data(i,j));
+        if val < 10
+            colors(i,j,:) = [0, 1, 0];      % green
+        elseif val < 40
+            colors(i,j,:) = [1, 1, 0];      % yellow
+        else
+            colors(i,j,:) = [1, 0.6, 0.6];  % lighter red
+        end
+    end
+end
+
+% Plot using imagesc
+figure;
+imagesc(data); % use the data grid as placeholder
+hold on;
+
+% Overlay colored patches
+for i = 1:size(data,1)
+    for j = 1:size(data,2)
+        rectangle('Position',[j-0.5, i-0.5, 1, 1], ...
+                  'FaceColor', squeeze(colors(i,j,:)), ...
+                  'EdgeColor','k');
+        % Add text value (larger font size, bold, darker color)
+        text(j, i, sprintf('%.2f', data(i,j)), ...
+            'HorizontalAlignment','center', ...
+            'VerticalAlignment','middle', ...
+            'FontSize',14,'FontWeight','bold','Color','k');
+    end
+end
+
+% Adjust axes
+set(gca,'XTick',1:length(colLabels),'XTickLabel',colLabels, ...
+        'YTick',1:length(rowLabels),'YTickLabel',rowLabels, ...
+        'FontSize',12,'FontWeight','bold');
+xlabel('Columns'); ylabel('Rows');
+title('Percent Error Color Map','FontSize',16,'FontWeight','bold');
+axis equal tight;
