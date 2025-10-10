@@ -3,7 +3,6 @@ import serial
 import tkinter as tk
 from tkinter import *
 import tkinter.ttk as ttk
-import cv2
 from tkinter.scrolledtext import ScrolledText
 from ScrollableNotebook import ScrollableNotebook
 import pandas as pd
@@ -19,7 +18,7 @@ def main():
     strain = np.array([1, 1.2415, 1.406, 1.572, 1.738, 1.9045, 2.071, 2.2375])
 
     # Pandas dataframe to hold all data
-    data = {'Pad number' : [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Time (ms)']}
+    data = {'Pad number' : [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Young\'s Modulus', 'Time (ms)']}
     df = pd.DataFrame(data)
 
     ## Gui Interface
