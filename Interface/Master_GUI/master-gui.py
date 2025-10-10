@@ -23,7 +23,7 @@ from PIL import ImageTk
 
 
 
-commPort = '/dev/cu.usbmodem101'
+commPort = '/dev/cu.usbmodem21301'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
@@ -252,6 +252,12 @@ def changeSweepSettings():
     long_text = "\nSweep Settings Changed:\nStart: " + pres_start + "Increment: " + pres_incr + "Number of Increments: " + pres_num_incr
     updateOutput(long_text)
 
+def valve():
+    ser.write(b't')
+    temp = str(valveState.get())+ '\r'
+    ser.write(temp .encode())
+    sleep(0.1)
+
 def exportCSV():
     name = None
     name_var = tk.StringVar()
@@ -418,6 +424,11 @@ sweepButton.config(width=12, height=1)
 set = tk.Button(frame1, text="Set Pressure Settings", command=changeSweepSettings, anchor='center')
 set.grid(row=3, column=1)
 set.config(width=12, height=1)
+
+# Valve Release Widget
+valveState = tk.IntVar()
+checkbutton = tk.Checkbutton(frame1, text="Valve Release", variable=valveState, onvalue=1, offvalue=0,command=valve)
+checkbutton.grid(row=6, column=1)
 
 # Export CSV Widget
 exportBtn = tk.Button(frame1, text='Export CSV', command=exportCSV, anchor='center')
