@@ -111,7 +111,7 @@ def pressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, ca
             canvas_widget_new.grid_rowconfigure(0, weight=1)
             canvas_widget_new.grid_columnconfigure(0, weight=1)
             ax.plot(x, func(x, *coefficients), 'r-')
-            youngs_mod_line = lambda x: youngs_mod * x + intercept
+            youngs_mod_line = lambda x: youngs_mod * x - youngs_mod
             ax.plot(x, youngs_mod_line(x), 'g--')
             ax.scatter(x, -y, s=4, c='black')
             canvas_new.draw()
@@ -153,8 +153,8 @@ def pressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, ca
     
 
 def changeSweepSettings(presStart, presIncr, presNumIncr, impThresh, ser, OutputLabel):
-    maxPres = int(presStart.get()) + int(presIncr.get()) * int(presNumIncr.get())
-    if int(presStart.get()) > 0:
+    maxPres = float(presStart.get()) + float(presIncr.get()) * int(presNumIncr.get())
+    if float(presStart.get()) > 0:
         long_text = "\nPressure must begin at 0 kPa or less"
         updateOutput(long_text, OutputLabel)
         raise Pressure("Pressure must begin at 0 kPa or less")

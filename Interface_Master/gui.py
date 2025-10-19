@@ -153,7 +153,12 @@ def openCamera(canvas, win, OutputLabel, btn, ser, strain, j, df, notebook_holde
     btn.config(text="Pressure Sweep", command=lambda: communication.threadedPressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn))
 
 def callback(P):
-        return str.isdigit(P) or P=='' or (str(P)[0] == '-' and str.isdigit(P[1:])) or str(P) == '-'
+    try:
+        float(P)
+        return True
+    except ValueError:
+        return False
+    return str.isdigit(P) or P=='' or (str(P)[0] == '-' and str.isdigit(P[1:])) or str(P) == '-'
 
 def font_resize(o, event=None):
         x = o.winfo_width()

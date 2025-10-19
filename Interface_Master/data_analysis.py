@@ -6,6 +6,9 @@ from sympy import symbols, diff, lambdify
 def func(x, a, C):
     return a* C * ((x ** 2) - (1 / x))* np.exp(a * ((x ** 2) + (2 / x) - 3))
 
+def func2(x, m):
+    return m*(x-1)
+
 def align_data(stretch, stress):
     """
     Aligns the data based on the stretch and strain values.
@@ -52,9 +55,7 @@ def analyze_data(stretch, stress):
     popt, pcov = curve_fit(func, x, y, maxfev=100000)
     #fit_values = fit(stretch' ,cur_stress',fit_type, 'StartPoint', [1, 1]);
     #coeff = coeffvalues(fit_values)
-    
-    alpha_coeff = 0
-    C_coeff = 0
+
     eff_modulus = popt[0]*popt[1]*(-0.052*(popt[0]**3)+0.252*(popt[0]**2)+(0.053*popt[0])+1.09)
 
     t = symbols('t')
@@ -71,8 +72,16 @@ def analyze_data(stretch, stress):
             youngs_stress.append(y[i])
         else:
             break
-    regressResult = scipy.stats.linregress(youngs_stretch, youngs_stress)
-    youngs_modulus = regressResult.slope
-    intercept = regressResult.intercept
+    popt2, pcov2 = curve_fit(func2, x, y, maxfev=100000)
+    #fit_values = fit(stretch' ,cur_stress',fit_type, 'StartPoint', [1, 1]);
+    #coeff = coeffvalues(fit_values)
+
+    eff_modulus = popt[0]*popt[1]*(-0.052*(popt[0]**3)+0.252*(popt[0]**2)+(0.053*popt[0])+1.09)
+    youngs_modulus = popt2[0]
+    intercept = -popt2[0]
+    #regressResult = scipy.stats.linregress(youngs_stretch, youngs_stress)
+    #youngs_modulus = regressResult.slope
+    #intercept = regressResult.intercept
+    print(youngs_stretch)
 
     return popt, eff_modulus, youngs_modulus, intercept

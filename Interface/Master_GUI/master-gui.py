@@ -23,7 +23,7 @@ from PIL import ImageTk
 
 
 
-commPort = '/dev/cu.usbmodem21301'
+commPort = '/dev/cu.usbmodem1101'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
@@ -425,10 +425,21 @@ set = tk.Button(frame1, text="Set Pressure Settings", command=changeSweepSetting
 set.grid(row=3, column=1)
 set.config(width=12, height=1)
 
-# Valve Release Widget
-valveState = tk.IntVar()
-checkbutton = tk.Checkbutton(frame1, text="Valve Release", variable=valveState, onvalue=1, offvalue=0,command=valve)
-checkbutton.grid(row=6, column=1)
+def valve():
+    state = valveState.get()
+    if state == 1:
+        print("Valve: OPEN")
+        ser.write(b't')               # Command identifier (optional)
+        ser.write(b'1\r')             # Send '1' for open
+    else:
+        print("Valve: CLOSED")
+        ser.write(b't')
+        ser.write(b'0\r')             # Send '0' for close
+    sleep(0.1)
+
+valveState = tk.IntVar(value=0)
+checkbutton = tk.Checkbutton(frame1, text="Valve Release", variable=valveState, onvalue=1, offvalue=0, command=valve)
+checkbutton.grid(row=6, column=1, pady=5)
 
 # Export CSV Widget
 exportBtn = tk.Button(frame1, text='Export CSV', command=exportCSV, anchor='center')
