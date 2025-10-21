@@ -11,7 +11,7 @@ from communication import threadedCalibratePressure, threadedPressureSweep, chan
 from gui import updateOutput, reset, exportCSV, delete, threadedUpdateFrame, updateFrame, font_resize, callback, openCamera
 
 def main():
-    commPort = '/dev/cu.usbmodem1101'
+    commPort = '/dev/cu.usbmodem2101'
     ser = serial.Serial(commPort, baudrate = 9600)
     sleep(2)
 

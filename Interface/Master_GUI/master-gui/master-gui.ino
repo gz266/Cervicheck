@@ -21,13 +21,13 @@ char userInput;
 // Pressure Constants
 // 12% gel: test -2 increment, 21 increases
 // 7.5% gel: test -1 increment, 30 increases
-int pres_start = -1;
-int pres_incr = -1;
+float pres_start = -1;
+float pres_incr = -1;
 int pres_num_incr = 20;
 double imp_thresh = 500;
 
 double gain[NUM_INCR + 1];
-double phase[NUM_INCR + 1];
+int phase[NUM_INCR + 1];
 
 int i;
 
@@ -44,32 +44,29 @@ int curPad = 1;
 float stressStrain[7] = {0,0,0,0,0,0,0};
 
 // Board Constants
-const int yellowLED = 7;
-const int greenLED = 6;
-const int startbuttonPin = 5;
-int startbuttonState = 0;
+const int valve = 7;
 
 float pressure;
 
 // Pressure Control Constants
 // y = mx where y is digital value to supply DAC and x is desired pressure (-kPa)
-float slope = -79.1919;
-float yint = 36.2067;
+float slope = -79.24 ;
+float yint = 44.45;
 String data;
-const float error = 0.05;
 
 //SD Card
 File dataFile;
 String filename = "Data.csv";
 const int chipSelectPin = 2;
 
+
 void setup(void) {
   Serial.begin(9600);
   Wire.begin();
 
-  // LEDs
-  pinMode(greenLED, OUTPUT);
-  pinMode(yellowLED, OUTPUT);
+  // Valve Release
+  pinMode(valve, OUTPUT);
+  digitalWrite(valve, LOW);
 
   // Pull pin A2 to ground
   pinMode(A2, OUTPUT);
@@ -92,11 +89,11 @@ void setup(void) {
   // Select 300 OHM resistor
   selectPad(0);
 
-  Serial.print("Calibrating... ");
   // Perform calibration sweep
   if (!AD5933::calibrate(gain, phase, REF_RESIST, NUM_INCR + 1)) {
     Serial.println("Calibration failed...");
-    while (true);
+    while (true)
+      ;
   }
   Serial.println("Calibrated!");
 
@@ -106,21 +103,13 @@ void setup(void) {
 
   // Initialize DAC
   dac.begin(0x60);
-
-  AD5933::setSettlingCycles(2047);
-  // Serial.println(AD5933::readRegister(0x8A));
-  // Serial.println(AD5933::readRegister(0x8B));
 }
 
 void loop(void) {
   dac.setVoltage((0*4095)/5, false);
-  digitalWrite(greenLED, LOW);
-  digitalWrite(yellowLED, HIGH);
   if(Serial.available()>0){
     userInput = Serial.read();               // read user input
     if(userInput == 's'){         
-      digitalWrite(greenLED, HIGH);
-      digitalWrite(yellowLED, LOW);
       long t1 = millis();
       pressureSweep();
       long t2 = millis();
@@ -133,30 +122,36 @@ void loop(void) {
       for(int i=0; i < 7; i++){
         stressStrain[i] = 0;
       }
+      Serial.print("Releasing Valve: ");
+      releaseValve(1);
+      delay(5000);
+      releaseValve(0);
     }
-  if(userInput == 'p'){         
-      digitalWrite(greenLED, HIGH);
-      digitalWrite(yellowLED, LOW);
-      long t1 = millis();
+
+  if(userInput == 'p'){     
       calibratePressure();
-      long t2 = millis();
     }
+
   if(userInput == 'r'){
     data = Serial.readStringUntil('\r');
     slope = data.toFloat();
     data = Serial.readStringUntil('\r');
     yint = data.toFloat();
     }
+
   if(userInput == 'i'){
     data = Serial.readStringUntil('\r');
-    pres_start = data.toInt();
+    pres_start = data.toFloat();
     data = Serial.readStringUntil('\r');
-    pres_incr = data.toInt();
+    pres_incr = data.toFloat();
     data = Serial.readStringUntil('\r');
     pres_num_incr = data.toInt();
     data = Serial.readStringUntil('\r');
     imp_thresh = data.toDouble();
-
+  }
+  if(userInput == 't'){
+    data = Serial.readStringUntil('\r');
+    releaseValve(data.toInt());
     }
   }
 }
@@ -183,11 +178,31 @@ void calibratePressure() {
   }
   Serial.println("Done!");
 }
+
+void precondition(int cycles){
+  for (int i = 0; i < cycles; i++){
+    // On
+    releaseValve(0);
+    selectPressure(0.5);
+    delay(100);
+    Serial.print("Pressure Held: ");
+    Serial.println(getPressure());
+
+    // Off
+    releaseValve(1);
+    selectPressure(0);
+    delay(250);
+    Serial.print("Pressure Released: ");
+    Serial.println(getPressure());
+  }
+  releaseValve(0);
+}
 // Testing Functions
 void pressureSweep() {
   curPad = 1;
   pressure = pres_start;
   int sweep;
+  precondition(10);
   for (int i = 0; i < pres_num_incr; i++, pressure += pres_incr) {
     if (curPad == 8){
       break;
@@ -206,10 +221,11 @@ void pressureSweep() {
     Serial.print("Current Pressure (kPa): ");
     Serial.println(getPressure());
     int count = 0;
+    int error = 0.1;
     // Just in case pressure is not reached
     while (abs(getPressure()-pressure) > error){
       count++;
-      if (count > 200){
+      if (count > 100){
         break;
       }
     }
@@ -243,7 +259,6 @@ void runTest(int padnum) {
   */
   Serial.print("Test time (ms): ");
   Serial.println(time2 - time1);
-  
 }
 
 // Frequency Sweep
@@ -278,12 +293,9 @@ void frequencySweepStressStrain() {
   // Post Processing -> Test first value in array (lowest frequency)
   double magnitude = sqrt(pow(real[0], 2) + pow(imag[0], 2));
   double impedance = 1 / (magnitude * gain[0]);
-  
+
   if ((impedance < imp_thresh) && (curPad < 8)){
     stressStrain[curPad-1] = getPressure();
-    // TODO 
-    // Send to python that pad was contacted
-
 
     Serial.print("Pad ");
     Serial.print(curPad);
@@ -291,14 +303,24 @@ void frequencySweepStressStrain() {
     Serial.print(impedance);
     Serial.println(" (ohms)!");
     curPad++;
+
   }else{
-    // TODO
-    // Send to python that pad was not contacted
     Serial.print("Pad ");
     Serial.print(curPad);
     Serial.print(" has not been contacted at ");
     Serial.print(impedance);
     Serial.println(" (ohms)");
+  }
+
+  if ((impedance < 2300) && (curPad == 1)){
+    stressStrain[curPad-1] = getPressure();
+
+    Serial.print("Pad ");
+    Serial.print(curPad);
+    Serial.print(" has been contacted at ");
+    Serial.print(impedance);
+    Serial.println(" (ohms)!");
+    curPad++;
   }
 }
 
@@ -336,4 +358,12 @@ void selectPressure(float p) {
     p = p*-1;
   }
   dac.setVoltage(slope*p + yint, false);
+}
+
+void releaseValve(int a){
+  if (a == 1){
+    digitalWrite(valve, HIGH);
+  }else{
+    digitalWrite(valve, LOW);
+  }
 }
