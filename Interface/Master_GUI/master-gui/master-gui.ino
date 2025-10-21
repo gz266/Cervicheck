@@ -161,8 +161,9 @@ void calibratePressure() {
   Serial.println("50");
   Serial.println("250");
   Serial.println("500");
-  Serial.println("1500");
-  Serial.println("2500");
+  Serial.println("750");
+  Serial.println("1000");
+  Serial.println("1250");
   Serial.println("Pressure: ");
   for (int i = 50; i < 251; i+=200){
     dac.setVoltage(i, false);
@@ -170,7 +171,7 @@ void calibratePressure() {
     // Serial.print(i);
     Serial.println(getPressure());
   }
-  for (int i = 500; i < 2501; i+=1000){
+  for (int i = 500; i < 1500; i+=250){
     dac.setVoltage(i, false);
     delay(3000);
     // Serial.print(i);
@@ -311,7 +312,7 @@ void frequencySweepStressStrain() {
     Serial.print(impedance);
     Serial.println(" (ohms)");
   }
-
+  /*
   if ((impedance < 2300) && (curPad == 1)){
     stressStrain[curPad-1] = getPressure();
 
@@ -322,6 +323,7 @@ void frequencySweepStressStrain() {
     Serial.println(" (ohms)!");
     curPad++;
   }
+  */
 }
 
 // Mux Control Function
