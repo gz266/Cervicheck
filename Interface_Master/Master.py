@@ -15,7 +15,7 @@ def main():
     ser = serial.Serial(commPort, baudrate = 9600)
     sleep(2)
 
-    strain = np.array([1, 1.2415, 1.406, 1.572, 1.738, 1.9045, 2.071, 2.2375])
+    strain = np.array([1, 3.5, 3.6, 3.7, 3.8, 3.9, 4, 4.1])
 
     # Pandas dataframe to hold all data
     data = {'Pad number' : [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Young\'s Modulus', 'Time (ms)']}
