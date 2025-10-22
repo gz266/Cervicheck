@@ -89,8 +89,8 @@ def pressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, ca
             x, y = align_data(strain, pressure)
             coefficients, eff_mod, youngs_mod, intercept = analyze_data(x, y)
             fig, ax = plt.subplots(figsize=(3, 2), layout='constrained')
-            ax.set_ylim([0, 50])                              # Set Y axis limit of plot
-            ax.set_xlim([1, 2.5])  
+            ax.set_ylim([0, 10])                              # Set Y axis limit of plot
+            ax.set_xlim([1, 2])  
             ax.set_title("Stress Strain Curve")                        # Set title of figure
             ax.set_ylabel("Pressure (kPa)")                              # Set title of y axis 
             ax.set_xlabel("Percent Strain (%)")         # Set title of x axis
