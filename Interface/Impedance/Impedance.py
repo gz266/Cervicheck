@@ -18,7 +18,7 @@ import matplotlib.animation as animation
 matplotlib.use('agg')
 
 
-commPort = '/dev/cu.usbmodem1301'
+commPort = '/dev/cu.usbmodem101'
 ser = serial.Serial(commPort, baudrate = 9600)
 sleep(2)
 
@@ -66,6 +66,15 @@ def frequencySweep():
         # if data.startswith('Performing'):
         #     i = 1
 
+def autoSweep():
+    ser.write(b'a')
+    while True:
+        data = ser.readline().decode('ascii')
+        updateOutput(data)
+        if data.startswith("Done"):
+            break
+
+
 def updateOutput(long):
     OutputLabel.insert(tk.END, long)
     OutputLabel.see('end')
@@ -110,6 +119,9 @@ impedanceSweep.grid(row=6, column=1)
 
 muxChannel = tk.Button(frame2, text='Set Channel', command=lambda : setChannel())
 muxChannel.grid(row=3, column=0)
+
+autoSweepBtn = tk.Button(frame1, text='Auto Sweep', command=lambda : autoSweep())
+autoSweepBtn.grid(row=7, column=1)
 
 # Entry
 
