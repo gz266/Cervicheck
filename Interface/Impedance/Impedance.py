@@ -39,6 +39,7 @@ def changeSweepSettings():
     sleep(0.1)
     long_text = "Impedance Settings Changed:\nStart Frequency: " + startFreq.strip('\r') + "(Hz)" + "\nFrequency Increment: " + freqIncr.strip('\r') + " (Hz)" + "\nNumber of Increments: " + numIncr.strip('\r') + "\nReference Resistance: " + refRes.strip('\r') + " (Ohms)"
     updateOutput(long_text)
+    
 
 def setChannel():
     ser.write(b'c')
