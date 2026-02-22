@@ -147,8 +147,8 @@ Ref_Res.grid(column=1, row=3, sticky="nsew")
 
 Channel.grid(column=0, row=2, sticky="nsew")
 
-presStartLabel = tk.Label(frame1, text='Starting Frequency (kHz)')
-presIncrLabel = tk.Label(frame1, text='Frequency Increment (kHz)')
+presStartLabel = tk.Label(frame1, text='Starting Frequency (Hz)')
+presIncrLabel = tk.Label(frame1, text='Frequency Increment (Hz)')
 presNumIncrLabel = tk.Label(frame1, text='Number of Increments')
 refResLabel = tk.Label(frame1, text='Reference Resistance (Ohms)')
 
