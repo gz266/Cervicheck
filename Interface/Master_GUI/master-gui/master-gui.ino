@@ -27,7 +27,7 @@ int pres_num_incr = 20;
 double imp_thresh = 500;
 
 double gain[NUM_INCR + 1];
-int phase[NUM_INCR + 1];
+double phase[NUM_INCR + 1];
 
 int i;
 
