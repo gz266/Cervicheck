@@ -5,6 +5,15 @@ from tkinter.scrolledtext import ScrolledText
 import threading
 import serial
 from time import sleep
+import json
+
+
+#add parse the string into nested dictionary and display as pandas table
+
+
+#if data is in json format
+data = json.loads(line)
+
 
 
 
@@ -35,7 +44,7 @@ def start_run():
     global running
     if not running:
         running = True
-        ser.write(b's')  # send start signal
+        ser.write(b's') 
         threading.Thread(target=read_serial, daemon=True).start()
         update_output("Started run")
 
