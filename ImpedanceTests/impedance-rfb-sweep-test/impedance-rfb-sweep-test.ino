@@ -62,7 +62,7 @@ void setup() {
 void loop() {
   userInput = Serial.read();
   if(userInput == 's') {
-    
+    runTest();
   }
 }
 
