@@ -8,7 +8,7 @@ import pandas as pd
 from tkinter import filedialog
 
 #start serial
-commPort = "COM6"
+commPort = "/dev/cu.usbmodem1101"
 ser = serial.Serial(commPort, baudrate=9600, timeout=1)
 sleep(2)
 
@@ -49,7 +49,7 @@ scrollbar_y = ttk.Scrollbar(table_frame, orient="vertical", command=table.yview)
 table.configure(yscrollcommand=scrollbar_y.set)
 
 # Layout
-table.grid(row=0, column=0, sticky="nsew")
+# table.grid(row=0, column=0, sticky="nsew")
 scrollbar_y.grid(row=0, column=1, sticky="ns")
 
 
@@ -94,6 +94,12 @@ def read_serial():
             if "Calibrated" in line or "FAILED" in line or "Let's Rock" in line:
                 continue
 
+            if "done" in line:
+                root.after(0, update_output, "Run complete")
+                stop_run()
+                save_csv()
+                continue
+
             #split the string
             parts = line.split(",")
 
@@ -130,25 +136,17 @@ def start_run():
         threading.Thread(target=read_serial, daemon=True).start()
         update_output("Started run")
 
-start_button = tk.Button(root, text="Start run", command=start_run)
-start_button.pack()
-
-stop_button = tk.Button(root, text="Stop run", command = stop_run)
-stop_button.pack()
-
-save_button = tk.Button(root, text="Save to csv", command = save_csv)
-
 #stop the run
 def stop_run():
     global running
 
-    if not running:
+    if running:
         running = False
         try:
             ser.write(b'x')
         except:
             pass
-    update_output("Stopped run")
+        update_output("Stopped run")
 
 
 #save to csv
@@ -175,6 +173,13 @@ def save_csv():
         update_output(f"Error saving file: {e}")
 
 
+start_button = tk.Button(root, text="Start run", command=start_run)
+start_button.pack()
 
+stop_button = tk.Button(root, text="Stop run", command = stop_run)
+stop_button.pack()
+
+save_button = tk.Button(root, text="Save to csv", command = save_csv)
+save_button.pack()
 
 root.mainloop()
