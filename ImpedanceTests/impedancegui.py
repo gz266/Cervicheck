@@ -109,9 +109,9 @@ def read_serial():
             rfb, cal, test, imp = [p.strip() for p in parts]
 
             row = {
-                "RFB": int(rfb),
-                "CalibrationResistance": int(cal),
-                "TestResistance": int(test),
+                "RFB": int(float(rfb)),
+                "CalibrationResistance": int(float(cal)),
+                "TestResistance": int(float(test)),
                 "Impedance": float(imp)
             }
 
