@@ -12,7 +12,7 @@ from gui import updateOutput, reset, exportCSV, delete, threadedUpdateFrame, upd
 
 def main():
     commPort = 'COM3'
-    ser = serial.Serial(commPort, baudrate = 9600)
+    # ser = serial.Serial(commPort, baudrate = 9600)
     sleep(2)
 
     strain = np.array([1, 1.05, 1.15, 1.25, 1.35, 1.45, 1.55, 1.65])
