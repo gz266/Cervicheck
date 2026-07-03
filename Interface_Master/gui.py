@@ -69,7 +69,7 @@ def reset(win, OutputLabel, notebook_holder, df, j):
     notebook.destroy()
     new_notebook = ScrollableNotebook(win, tabmenu = False)
     notebook_holder['nb'] = new_notebook 
-    win.grid_columnconfigure(2, weight=0)
+    win.grid_columnconfigure(3, weight=0)
     OutputLabel.configure(state='normal')
     OutputLabel.delete(1.0, tk.END)
     OutputLabel.configure(state='disabled')
@@ -144,13 +144,13 @@ def updateFrame(canvas, win, photo, cap):
 def threadedUpdateFrame(canvas, win, photo, cap):
     threading.Thread(target=updateFrame, args=(canvas, win, photo, cap)).start()
 
-def openCamera(canvas, win, OutputLabel, btn, ser, strain, j, df, notebook_holder):
+def openCamera(canvas, win, OutputLabel, btn, ser, strain, j, df, notebook_holder, live_plot_holder=None):
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         updateOutput("Error: Could not open camera.", OutputLabel)
     photo = None
     updateFrame(canvas, win, photo, cap)
-    btn.config(text="Pressure Sweep", command=lambda: communication.threadedPressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn))
+    btn.config(text="Pressure Sweep", command=lambda: communication.threadedPressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder))
 
 def callback(P):
     try:

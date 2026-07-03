@@ -26,8 +26,11 @@ def main():
     win = Tk() 
     win.grid_rowconfigure(0, weight=1)
     win.grid_columnconfigure(0, weight=1)
+    win.grid_columnconfigure(2, weight=1)
+    win.grid_columnconfigure(3, weight=1)
     win.grid_columnconfigure(4, weight=1)
     frame1 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
+    frame3 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
     frame2 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
 
     frame1.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
@@ -35,6 +38,10 @@ def main():
     frame1.grid_columnconfigure(0, weight=1)
     frame1.grid_columnconfigure(1, weight=1)
     frame1.grid_rowconfigure(7, weight=1)
+
+    frame3.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+    frame3.grid_rowconfigure(1, weight=1)
+    frame3.grid_columnconfigure(0, weight=1)
 
     frame2.grid(row=0, column=4, padx=10, pady=10, sticky="nsew")
     frame2.grid_rowconfigure(0, weight=1)
@@ -45,6 +52,16 @@ def main():
     win.minsize(200,60)
 
     j = tk.IntVar(value=1)
+
+    livePlotLabel = tk.Label(frame3, text='Live Pressure')
+    livePlotLabel.grid(column=0, row=0, sticky="nsew")
+    livePlotArea = tk.Frame(frame3, relief=tk.RAISED, borderwidth=1)
+    livePlotArea.grid(column=0, row=1, sticky="nsew")
+    livePlotArea.grid_rowconfigure(0, weight=1)
+    livePlotArea.grid_columnconfigure(0, weight=1)
+    livePlotStatus = tk.Label(frame3, text='Waiting for sweep')
+    livePlotStatus.grid(column=0, row=2, sticky="nsew")
+    live_plot_holder = {'parent': livePlotArea, 'status': livePlotStatus}
 
     ## Frame 1 Widgets
 
@@ -81,7 +98,7 @@ def main():
     calibrateBtn.config(width=12, height=1)
 
     # Pressure Sweep Widget
-    sweepButton = tk.Button(frame1, text='Open Camera', command=lambda: openCamera(canvas, win, OutputLabel, sweepButton, ser, strain, j, df, notebook_holder), anchor='center')
+    sweepButton = tk.Button(frame1, text='Open Camera', command=lambda: openCamera(canvas, win, OutputLabel, sweepButton, ser, strain, j, df, notebook_holder, live_plot_holder), anchor='center')
     sweepButton.grid(row=6, column=1)
     # sweepButton.config(state='disabled')
     sweepButton.config(width=12, height=1)

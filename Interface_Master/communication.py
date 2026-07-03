@@ -17,6 +17,131 @@ from data_analysis import align_data, analyze_data, func
 from gui import updateOutput, updateParameters, threadedUpdateFrame, openCamera
 
 
+def setupLivePressurePlot(live_plot_holder):
+    if live_plot_holder is None:
+        return
+
+    parent = live_plot_holder.get('parent')
+    if parent is None:
+        return
+
+    old_fig = live_plot_holder.get('fig')
+    if old_fig is not None:
+        plt.close(old_fig)
+
+    for child in parent.winfo_children():
+        child.destroy()
+
+    fig, ax = plt.subplots(figsize=(3, 2), layout='constrained')
+    actual_line, = ax.plot([], [], 'b-', label='Measured')
+    target_line, = ax.plot([], [], 'r--', label='Target')
+
+    ax.set_title("Live Pressure")
+    ax.set_ylabel("Pressure (kPa)")
+    ax.set_xlabel("Time (s)")
+    ax.grid(True, linestyle='--', linewidth=0.5)
+    ax.legend(loc='best')
+
+    plot_canvas = FigureCanvasTkAgg(fig, master=parent)
+    plot_canvas.get_tk_widget().grid(row=0, column=0, sticky="NSEW")
+    parent.grid_rowconfigure(0, weight=1)
+    parent.grid_columnconfigure(0, weight=1)
+
+    live_plot_holder.update({
+        'fig': fig,
+        'ax': ax,
+        'plot_canvas': plot_canvas,
+        'actual_line': actual_line,
+        'target_line': target_line,
+        'times': [],
+        'actual_pressures': [],
+        'target_pressures': [],
+        'pads': [],
+        'start_time_ms': None,
+        'contact_artists': []
+    })
+
+    status = live_plot_holder.get('status')
+    if status is not None:
+        status.config(text="Live pressure: waiting for samples")
+
+
+def updateLivePressurePlot(live_plot_holder, time_ms, target_pressure, actual_pressure, pad_num):
+    if live_plot_holder is None or live_plot_holder.get('plot_canvas') is None:
+        return
+
+    if live_plot_holder.get('start_time_ms') is None:
+        live_plot_holder['start_time_ms'] = time_ms
+
+    elapsed_s = (time_ms - live_plot_holder['start_time_ms']) / 1000.0
+    live_plot_holder['times'].append(elapsed_s)
+    live_plot_holder['target_pressures'].append(target_pressure)
+    live_plot_holder['actual_pressures'].append(actual_pressure)
+    live_plot_holder['pads'].append(pad_num)
+
+    times = live_plot_holder['times']
+    actual_pressures = live_plot_holder['actual_pressures']
+    target_pressures = live_plot_holder['target_pressures']
+
+    live_plot_holder['actual_line'].set_data(times, actual_pressures)
+    live_plot_holder['target_line'].set_data(times, target_pressures)
+
+    all_pressures = actual_pressures + target_pressures
+    pressure_min = min(all_pressures)
+    pressure_max = max(all_pressures)
+    pressure_pad = max(1.0, (pressure_max - pressure_min) * 0.15)
+
+    ax = live_plot_holder['ax']
+    ax.set_xlim(0, max(1.0, times[-1]))
+    ax.set_ylim(pressure_min - pressure_pad, pressure_max + pressure_pad)
+
+    status = live_plot_holder.get('status')
+    if status is not None:
+        status.config(text=f"Pad {pad_num} | Target {target_pressure:.2f} kPa | Measured {actual_pressure:.2f} kPa")
+
+    live_plot_holder['plot_canvas'].draw_idle()
+
+
+def markPressureContact(live_plot_holder, time_ms, pad_num, pressure, impedance):
+    if live_plot_holder is None or live_plot_holder.get('plot_canvas') is None:
+        return
+
+    start_time_ms = live_plot_holder.get('start_time_ms')
+    elapsed_s = 0 if start_time_ms is None else (time_ms - start_time_ms) / 1000.0
+
+    ax = live_plot_holder['ax']
+    marker = ax.scatter([elapsed_s], [pressure], s=35, c='black', zorder=5)
+    live_plot_holder['contact_artists'].append(marker)
+
+    status = live_plot_holder.get('status')
+    if status is not None:
+        status.config(text=f"Pad {pad_num} contact | Pressure {pressure:.2f} kPa | Impedance {impedance:.2f} ohms")
+
+    live_plot_holder['plot_canvas'].draw_idle()
+
+
+def parsePressureLine(data):
+    parts = data.strip().split(',')
+    if len(parts) != 5:
+        return None
+
+    try:
+        return float(parts[1]), float(parts[2]), float(parts[3]), int(parts[4])
+    except ValueError:
+        return None
+
+
+def parseContactLine(data):
+    parts = data.strip().split(',')
+    if len(parts) != 5:
+        return None
+
+    try:
+        return float(parts[1]), int(parts[2]), float(parts[3]), float(parts[4])
+    except ValueError:
+        return None
+
+
 def calibratePressure(ser, OutputLabel):
     ser.write(b'p')
     voltage = []
@@ -70,15 +195,26 @@ def calibratePressure(ser, OutputLabel):
     sleep(0.1)
     # sweepButton.config(state='normal')
 
-def pressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn):
+def pressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder=None):
     cap.release()
     notebook = notebook_holder['nb']
+    setupLivePressurePlot(live_plot_holder)
     ser.write(b's') 
     b = False
     pressure = np.zeros(8)
     k = j.get()
     while True:
         data = ser.readline().decode('ascii')
+        if data.startswith("PRESSURE,"):
+            parsed = parsePressureLine(data)
+            if parsed is not None:
+                updateLivePressurePlot(live_plot_holder, *parsed)
+            continue
+        if data.startswith("CONTACT,"):
+            parsed = parseContactLine(data)
+            if parsed is not None:
+                markPressureContact(live_plot_holder, *parsed)
+            continue
         updateOutput(data, OutputLabel)
         if data.startswith("Done"):
             b = True
@@ -96,8 +232,8 @@ def pressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, ca
             ax.set_xlabel("Percent Strain (%)")         # Set title of x axis
 
             if k == 1:
-                notebook.grid(column=2, row=0, sticky='NSEW')
-                win.grid_columnconfigure(2, weight=1)
+                notebook.grid(column=3, row=0, sticky='NSEW')
+                win.grid_columnconfigure(3, weight=1)
                 notebook.grid_rowconfigure(0, weight=1)
                 notebook.grid_columnconfigure(0, weight=1)
             graph = tk.Frame()
@@ -149,7 +285,7 @@ def pressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, ca
                 data_float = float(data)
                 pressure[i] = data_float
                 i = i + 1
-    btn.config(text="Open Camera", command=lambda: openCamera(canvas, win, OutputLabel, btn, ser, strain, j, df, notebook_holder))
+    btn.config(text="Open Camera", command=lambda: openCamera(canvas, win, OutputLabel, btn, ser, strain, j, df, notebook_holder, live_plot_holder))
     
 
 def changeSweepSettings(presStart, presIncr, presNumIncr, impThresh, ser, OutputLabel):
@@ -180,8 +316,8 @@ def changeSweepSettings(presStart, presIncr, presNumIncr, impThresh, ser, Output
 
 def threadedCalibratePressure(ser, OutputLabel):
     threading.Thread(target=calibratePressure, args=(ser, OutputLabel)).start()
-def threadedPressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn):
-    threading.Thread(target=pressureSweep, args=(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn)).start()
+def threadedPressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder=None):
+    threading.Thread(target=pressureSweep, args=(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder)).start()
 
 # Exception
 class Pressure(Exception):

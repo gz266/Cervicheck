@@ -197,6 +197,29 @@ void precondition(int cycles){
   }
   releaseValve(0);
 }
+
+void streamPressureSample(float targetPressure, float actualPressure, int padnum) {
+  Serial.print("PRESSURE,");
+  Serial.print(millis());
+  Serial.print(",");
+  Serial.print(targetPressure);
+  Serial.print(",");
+  Serial.print(actualPressure);
+  Serial.print(",");
+  Serial.println(padnum);
+}
+
+void streamContactMarker(int padnum, float contactPressure, double impedance) {
+  Serial.print("CONTACT,");
+  Serial.print(millis());
+  Serial.print(",");
+  Serial.print(padnum);
+  Serial.print(",");
+  Serial.print(contactPressure);
+  Serial.print(",");
+  Serial.println(impedance);
+}
+
 // Testing Functions
 void pressureSweep() {
   curPad = 1;
@@ -218,17 +241,24 @@ void pressureSweep() {
     Serial.println(pressure);
     selectPressure(pressure);
 
+    float currentPressure = getPressure();
     Serial.print("Current Pressure (kPa): ");
-    Serial.println(getPressure());
+    Serial.println(currentPressure);
+    streamPressureSample(pressure, currentPressure, curPad);
     int count = 0;
-    int error = 0.1;
+    float error = 0.1;
     // Just in case pressure is not reached
-    while (abs(getPressure()-pressure) > error){
+    while (abs(currentPressure-pressure) > error){
       count++;
+      currentPressure = getPressure();
+      if (count % 5 == 0){
+        streamPressureSample(pressure, currentPressure, curPad);
+      }
       if (count > 100){
         break;
       }
     }
+    streamPressureSample(pressure, currentPressure, curPad);
     runTest(curPad);
   }
 }
@@ -295,7 +325,9 @@ void frequencySweepStressStrain() {
   double impedance = 1 / (magnitude * gain[0]);
   
   if ((impedance < 2300) && (curPad == 1)){
-    stressStrain[curPad-1] = getPressure();
+    float contactPressure = getPressure();
+    stressStrain[curPad-1] = contactPressure;
+    streamContactMarker(curPad, contactPressure, impedance);
 
     Serial.print("Pad ");
     Serial.print(curPad);
@@ -306,7 +338,9 @@ void frequencySweepStressStrain() {
   }
 
   if ((impedance < imp_thresh) && (curPad < 8) && (curPad != 1)){
-    stressStrain[curPad-1] = getPressure();
+    float contactPressure = getPressure();
+    stressStrain[curPad-1] = contactPressure;
+    streamContactMarker(curPad, contactPressure, impedance);
 
     Serial.print("Pad ");
     Serial.print(curPad);
