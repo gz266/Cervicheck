@@ -27,10 +27,11 @@ def updateParameters(A, C, E, Y, T, pads, a_label, C_label, eff_mod_label, young
     formatted_T = '{:0.0f}'.format(T)
     for pad in pads:
         formatted_pad = '{:0.2f}'.format(pad)
-    pad_text = "Pad 1: " + str(pads[1]) + "\n\nPad 2: " + str(pads[2]) + "\n\nPad 3: " + str(pads[3]) + "\n\nPad 4: " + str(pads[4]) + "\n\nPad 5: " + str(pads[5]) + "\n\nPad 6: " + str(pads[6]) + "\n\nPad 7: " + str(pads[7])
+    pad_text = "Pad 0: " + str(pads[1]) + "\n\nPad 1: " + str(pads[2]) + "\n\nPad 2: " + str(pads[3]) + "\n\nPad 3: " + str(pads[4]) + "\n\nPad 4: " + str(pads[5]) + "\n\nPad 5: " + str(pads[6]) + "\n\nPad 6: " + str(pads[7]) + "\n\nPad 7: " + str(pads[8])
     arr = [*pads[1:], formatted_A, formatted_C, formatted_E, formatted_Y, formatted_T]
     k = j.get()
-    df.insert(df.shape[1], 'Sweep ' + str(k), arr)
+    df['Sweep ' + str(k)] = arr
+    # df.insert(df.shape[1], 'Sweep ' + str(k), arr)
     a_label.config(state='normal')
     a_label.delete(1.0, tk.END)
     a_label.insert(tk.END, "α: ")
@@ -65,7 +66,7 @@ def reset(win, OutputLabel, notebook_holder, df, j):
     notebook = notebook_holder['nb']
     df.drop(df.index, inplace=True)    
     df.drop(df.columns, axis=1, inplace=True)
-    df.insert(0, 'Pad number', [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Young\'s Modulus', 'Time (ms)'])
+    df.insert(0, 'Pad number', [0, 1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Young\'s Modulus', 'Time (ms)'])
     notebook.destroy()
     new_notebook = ScrollableNotebook(win, tabmenu = False)
     notebook_holder['nb'] = new_notebook 

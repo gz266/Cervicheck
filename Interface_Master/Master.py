@@ -11,14 +11,15 @@ from communication import threadedCalibratePressure, threadedPressureSweep, chan
 from gui import updateOutput, reset, exportCSV, delete, threadedUpdateFrame, updateFrame, font_resize, callback, openCamera
 
 def main():
-    commPort = 'COM3'
+    commPort = '/dev/cu.usbmodem14101'
     ser = serial.Serial(commPort, baudrate = 9600)
     sleep(2)
 
-    strain = np.array([1, 1.05, 1.15, 1.25, 1.35, 1.45, 1.55, 1.65])
+
+    strain = np.array([1, 1.3375, 1.7375, 1.9375, 2.0375, 2.1375, 2.2375, 2.3375, 2.4375])
 
     # Pandas dataframe to hold all data
-    data = {'Pad number' : [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Young\'s Modulus', 'Time (ms)']}
+    data = {'Pad number' : [0, 1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Young\'s Modulus', 'Time (ms)']}
     df = pd.DataFrame(data)
 
     ## Gui Interface
@@ -109,6 +110,12 @@ def main():
     set.grid(row=4, column=1)
     set.config(width=12, height=1)
 
+    # --- TROUBLESHOOTING: manual calibration check button ---
+    calibCheckBtn = tk.Button(frame1, text='Calib Check', command=lambda: ser.write(b'c\r'), anchor='center')
+    calibCheckBtn.grid(row=8, column=1)
+    calibCheckBtn.config(width=12, height=1)
+    # --- END TROUBLESHOOTING ---
+
     # Export CSV Widget
     exportBtn = tk.Button(frame1, text='Export CSV', command=lambda : exportCSV(df, OutputLabel), anchor='center')
     exportBtn.grid(row=4, column=0)
@@ -128,6 +135,7 @@ def main():
     canvas.grid(row=7, column=0, columnspan=2, sticky="nsew")
 
     # Notebook for graphs (to be used when graph is actually produced)
+
     notebook = ScrollableNotebook(win, tabmenu = False)
     notebook_holder = {}
     notebook_holder['nb'] = notebook
