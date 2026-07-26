@@ -109,30 +109,9 @@ def markPressureContact(live_plot_holder, time_ms, pad_num, pressure, impedance)
     start_time_ms = live_plot_holder.get('start_time_ms')
     elapsed_s = 0 if start_time_ms is None else (time_ms - start_time_ms) / 1000.0
 
-    marker_time = elapsed_s
-    marker_pressure = pressure
-    times = live_plot_holder.get('times', [])
-    actual_pressures = live_plot_holder.get('actual_pressures', [])
-    target_pressures = live_plot_holder.get('target_pressures', [])
-
-    if times and actual_pressures:
-        nearest_index = min(range(len(times)), key=lambda idx: abs(times[idx] - elapsed_s))
-        marker_time = times[nearest_index]
-        marker_pressure = actual_pressures[nearest_index]
-
     ax = live_plot_holder['ax']
-    marker = ax.scatter([marker_time], [marker_pressure], s=35, c='black', zorder=5)
+    marker = ax.scatter([elapsed_s], [pressure], s=35, c='black', zorder=5)
     live_plot_holder['contact_artists'].append(marker)
-
-    all_times = times + [marker_time]
-    all_pressures = actual_pressures + target_pressures + [marker_pressure]
-    if all_times:
-        ax.set_xlim(0, max(1.0, max(all_times)))
-    if all_pressures:
-        pressure_min = min(all_pressures)
-        pressure_max = max(all_pressures)
-        pressure_pad = max(1.0, (pressure_max - pressure_min) * 0.15)
-        ax.set_ylim(pressure_min - pressure_pad, pressure_max + pressure_pad)
 
     status = live_plot_holder.get('status')
     if status is not None:
@@ -222,7 +201,8 @@ def pressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, ca
     setupLivePressurePlot(live_plot_holder)
     ser.write(b's') 
     b = False
-    pressure = np.zeros(9)
+    pressure = np.zeros(8)
+    # pressure = np.zeros(9)
     k = j.get()
     while True:
         data = ser.readline().decode('ascii')
@@ -246,11 +226,11 @@ def pressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, ca
             x, y = align_data(strain, pressure)
             coefficients, eff_mod, youngs_mod, intercept = analyze_data(x, y)
             fig, ax = plt.subplots(figsize=(3, 2), layout='constrained')
-            ax.set_ylim([0, 10])                              # Set Y axis limit of plot
-            ax.set_xlim([1, 2])  
+            # ax.set_ylim([0, 10])                              # Set Y axis limit of plot
+            ax.set_xlim([1, 2.5])  
             ax.set_title("Stress Strain Curve")                        # Set title of figure
             ax.set_ylabel("Pressure (kPa)")                              # Set title of y axis 
-            ax.set_xlabel("Percent Strain (%)")         # Set title of x axis
+            ax.set_xlabel("Strain Ratio")                       # Set title of x axis
 
             if k == 1:
                 notebook.grid(column=3, row=0, sticky='NSEW')
@@ -334,6 +314,16 @@ def changeSweepSettings(presStart, presIncr, presNumIncr, impThresh, ser, Output
     sleep(0.1)
     long_text = "\nSweep Settings Changed:\nStart: " + pres_start + "Increment: " + pres_incr + "Number of Increments: " + pres_num_incr + "Impedance Threshold: " + imp_thresh
     updateOutput(long_text, OutputLabel)
+
+def calibCheck(ser, OutputLabel):
+    ser.write(b'c\r')
+    while True:
+        data = ser.readline().decode('ascii')
+        if(data.startswith("DONE")):
+            break
+        updateOutput(data, OutputLabel)
+
+        
 
 def threadedCalibratePressure(ser, OutputLabel):
     threading.Thread(target=calibratePressure, args=(ser, OutputLabel)).start()
