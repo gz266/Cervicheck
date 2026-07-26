@@ -202,7 +202,6 @@ def pressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, ca
     ser.write(b's') 
     b = False
     pressure = np.zeros(8)
-    # pressure = np.zeros(9)
     k = j.get()
     while True:
         data = ser.readline().decode('ascii')
