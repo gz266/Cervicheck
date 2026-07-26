@@ -327,6 +327,7 @@ void frequencySweepStressStrain() {
   if ((impedance < 2300) && (curPad == 1)){
     float contactPressure = getPressure();
     stressStrain[curPad-1] = contactPressure;
+    streamPressureSample(pressure, contactPressure, curPad);
     streamContactMarker(curPad, contactPressure, impedance);
 
     Serial.print("Pad ");
@@ -340,6 +341,7 @@ void frequencySweepStressStrain() {
   if ((impedance < imp_thresh) && (curPad < 8) && (curPad != 1)){
     float contactPressure = getPressure();
     stressStrain[curPad-1] = contactPressure;
+    streamPressureSample(pressure, contactPressure, curPad);
     streamContactMarker(curPad, contactPressure, impedance);
 
     Serial.print("Pad ");
