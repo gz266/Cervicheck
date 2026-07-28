@@ -1,7 +1,6 @@
 #include <Wire.h>
 #include <Adafruit_ADS1X15.h>
 #include <Adafruit_MCP4725.h>
-#include "AD5933.h"
 #include <SD.h>
 
 
@@ -10,11 +9,6 @@ Adafruit_ADS1015 ads1015;
 
 #define DAC_RESOLUTION (9)
 char userInput;
-// AD5933 Constants
-
-#define START_FREQ (10000)
-#define FREQ_INCR (10000)
-#define NUM_INCR (2)
 
 #define REF_RESIST (300)
 
@@ -26,9 +20,6 @@ float pres_incr = -1;
 int pres_num_incr =  30;
 double imp_thresh = 500;
 float res_volt_thresh = 4.5;
-
-double gain[NUM_INCR + 1];
-double phase[NUM_INCR + 1];
 
 int i;
 
@@ -45,6 +36,8 @@ int MUXtable[8][3] = { { 1, 1, 1 }, { 1, 1, 0 }, { 1, 0, 1 }, { 1, 0, 0 }, { 0, 
 int curPad = 1;
 // float stressStrain[8] = {0,0,0,0,0,0,0,0};
 float stressStrain[7] = {0, 0, 0, 0, 0, 0, 0};
+
+float padRes[8] = {5, 5, 5, 5, 5, 5, 5, 5};
 
 // Board Constants
 const int valve = 7;
@@ -183,6 +176,14 @@ void calibCheck() {
   }
   Serial.println("DONE");
 }
+
+void readAllPads(float res_arr[]) {
+  for(int k = 0; k < 7; k++) {
+    selectPad(k);
+    delay(50);
+    res_arr[k] = ads1015.readADC_SingleEnded(3) * 3.0 / 1000;
+  }
+}
 void calibratePressure() {
   Serial.println("Voltage: ");
   Serial.println("50");
@@ -252,7 +253,7 @@ void pressureSweep() {
     Serial.println(currentPressure);
     streamPressureSample(pressure, currentPressure, curPad);
     int count = 0;
-    int error = 0.1;
+    float error = 0.1;
     // Just in case pressure is not reached
     while (abs(getPressure()-pressure) > error){
       count++;
@@ -308,9 +309,18 @@ void runTest(int padnum) {
 }
 
 void resistanceRead() {
-  int val = ads1015.readADC_SingleEnded(3);
-  float voltage = 3.0 * val / 1000;
-
+  // int val = ads1015.readADC_SingleEnded(3);
+  // float voltage = 3.0 * val / 1000;
+  readAllPads(padRes);
+  float voltage = 5.0;
+  for(int v = curPad; v < 8; v++) {
+    if(padRes[v] < res_volt_thresh) {
+      voltage = padRes[v];
+      curPad = v;
+    }
+    else
+      break;
+  }
   // --- TROUBLESHOOTING LOG ---
   // Serial.print("DEBUG,");
   // Serial.print(millis());
@@ -343,69 +353,6 @@ void resistanceRead() {
     Serial.print(voltage);
     Serial.println(" (volts)");
   }
-}
-// Frequency Sweep
-void frequencySweepStressStrain() {
-  // Create arrays to hold the data
-  int real[NUM_INCR + 1], imag[NUM_INCR + 1];
-
-  // Perform the frequency sweep
-  if (AD5933::frequencySweep(real, imag, NUM_INCR + 1)) {
-    // Print the frequency data
-    int cfreq = START_FREQ / 1000;
-    for (int i = 0; i < NUM_INCR + 1; i++, cfreq += FREQ_INCR / 1000) {
-      // Print raw frequency data
-      // Serial.print(cfreq);
-      // Serial.print(": Impedance = ");
-      // Serial.print(real[i]);
-      // Serial.print("/I=");
-      // Serial.print(imag[i]);
-
-      // Compute impedance
-      double magnitude = sqrt(pow(real[i], 2) + pow(imag[i], 2));
-      double impedance = 1 / (magnitude * gain[i]);
-      // Serial.print("  |Z|=");
-      //dataFile.print(", ");
-      // Serial.println(impedance);
-      //dataFile.print(impedance);
-    }
-    // Serial.println("Frequency sweep complete!");
-  } else {
-    Serial.println("Frequency sweep failed...");
-  }
-  // Post Processing -> Test first value in array (lowest frequency)
-  double magnitude = sqrt(pow(real[0], 2) + pow(imag[0], 2));
-  double impedance = 1 / (magnitude * gain[0]);
-
-  if ((impedance < imp_thresh) && (curPad < 8)){
-    stressStrain[curPad-1] = getPressure();
-
-    Serial.print("Pad ");
-    Serial.print(curPad);
-    Serial.print(" has been contacted at ");
-    Serial.print(impedance);
-    Serial.println(" (ohms)!");
-    curPad++;
-
-  }else{
-    Serial.print("Pad ");
-    Serial.print(curPad);
-    Serial.print(" has not been contacted at ");
-    Serial.print(impedance);
-    Serial.println(" (ohms)");
-  }
-  /*
-  if ((impedance < 2300) && (curPad == 1)){
-    stressStrain[curPad-1] = getPressure();
-
-    Serial.print("Pad ");
-    Serial.print(curPad);
-    Serial.print(" has been contacted at ");
-    Serial.print(impedance);
-    Serial.println(" (ohms)!");
-    curPad++;
-  }
-  */
 }
 
 // Mux Control Function
