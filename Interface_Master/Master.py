@@ -17,8 +17,7 @@ def main():
 
 
     # strain = np.array([1, 1.3375, 1.7375, 1.9375, 2.0375, 2.1375, 2.2375, 2.3375, 2.4375])
-    ref_strain = np.array([1, 1.7375, 1.9375, 2.0375, 2.1375, 2.2375, 2.3375, 2.4375])
-    strain = []
+    strain = np.array([1, 1.7375, 1.9375, 2.0375, 2.1375, 2.2375, 2.3375, 2.4375])
 
     # Pandas dataframe to hold all data
     # data = {'Pad number' : [0, 1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Young\'s Modulus', 'Time (ms)']}
@@ -102,7 +101,7 @@ def main():
     calibrateBtn.config(width=12, height=1)
 
     # Pressure Sweep Widget
-    sweepButton = tk.Button(frame1, text='Open Camera', command=lambda: openCamera(canvas, win, OutputLabel, sweepButton, ser, ref_strain, strain, j, df, notebook_holder, live_plot_holder), anchor='center')
+    sweepButton = tk.Button(frame1, text='Open Camera', command=lambda: openCamera(canvas, win, OutputLabel, sweepButton, ser, strain, j, df, notebook_holder, live_plot_holder), anchor='center')
     sweepButton.grid(row=6, column=1)
     # sweepButton.config(state='disabled')
     sweepButton.config(width=12, height=1)

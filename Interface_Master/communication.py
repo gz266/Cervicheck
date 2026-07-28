@@ -216,7 +216,7 @@ def calibratePressure(ser, OutputLabel):
     sleep(0.1)
     # sweepButton.config(state='normal')
 
-def pressureSweep(win, ser, ref_strain, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder=None):
+def pressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder=None):
     cap.release()
     notebook = notebook_holder['nb']
     setupLivePressurePlot(live_plot_holder)
@@ -235,7 +235,6 @@ def pressureSweep(win, ser, ref_strain, strain, j, df, notebook_holder, OutputLa
             parsed = parseContactLine(data)
             if parsed is not None:
                 markPressureContact(live_plot_holder, *parsed)
-                strain.append(ref_strain[int(parsed[2])])
             continue
         updateOutput(data, OutputLabel)
         if data.startswith("Done"):
@@ -348,8 +347,8 @@ def calibCheck(ser, OutputLabel):
 
 def threadedCalibratePressure(ser, OutputLabel):
     threading.Thread(target=calibratePressure, args=(ser, OutputLabel)).start()
-def threadedPressureSweep(win, ser, ref_strain, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder=None):
-    threading.Thread(target=pressureSweep, args=(win, ser, ref_strain, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder)).start()
+def threadedPressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder=None):
+    threading.Thread(target=pressureSweep, args=(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder)).start()
 
 # Exception
 class Pressure(Exception):
