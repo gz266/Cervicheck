@@ -96,6 +96,7 @@ void setup(void) {
   // Serial.println("Test in 5 seconds");
   // delay(5000);
   // pressureSweep();
+  releaseValve(0);
 }
 int stop = 0;
 void loop(void) {
@@ -325,6 +326,7 @@ void resistanceRead() {
     float contactPressure = getPressure();
     // stressStrain[curPad] = contactPressure;
     stressStrain[curPad - 1] = contactPressure;
+    streamPressureSample(pressure, contactPressure, curPad);
     streamContactMarker(curPad, contactPressure, voltage);
 
     Serial.print("Pad ");

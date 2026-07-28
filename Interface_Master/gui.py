@@ -144,13 +144,13 @@ def updateFrame(canvas, win, photo, cap):
 def threadedUpdateFrame(canvas, win, photo, cap):
     threading.Thread(target=updateFrame, args=(canvas, win, photo, cap)).start()
 
-def openCamera(canvas, win, OutputLabel, btn, ser, strain, j, df, notebook_holder, live_plot_holder=None):
+def openCamera(canvas, win, OutputLabel, btn, ser, ref_strain, strain, j, df, notebook_holder, live_plot_holder=None):
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         updateOutput("Error: Could not open camera.", OutputLabel)
     photo = None
     updateFrame(canvas, win, photo, cap)
-    btn.config(text="Pressure Sweep", command=lambda: communication.threadedPressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder))
+    btn.config(text="Pressure Sweep", command=lambda: communication.threadedPressureSweep(win, ser, ref_strain,strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder))
 
 def callback(P):
     try:

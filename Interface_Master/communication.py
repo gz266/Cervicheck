@@ -109,9 +109,30 @@ def markPressureContact(live_plot_holder, time_ms, pad_num, pressure, impedance)
     start_time_ms = live_plot_holder.get('start_time_ms')
     elapsed_s = 0 if start_time_ms is None else (time_ms - start_time_ms) / 1000.0
 
+    marker_time = elapsed_s
+    marker_pressure = pressure
+    times = live_plot_holder.get('times', [])
+    actual_pressures = live_plot_holder.get('actual_pressures', [])
+    target_pressures = live_plot_holder.get('target_pressures', [])
+
+    if times and actual_pressures:
+        nearest_index = min(range(len(times)), key=lambda idx: abs(times[idx] - elapsed_s))
+        marker_time = times[nearest_index]
+        marker_pressure = actual_pressures[nearest_index]
+
     ax = live_plot_holder['ax']
-    marker = ax.scatter([elapsed_s], [pressure], s=35, c='black', zorder=5)
+    marker = ax.scatter([marker_time], [marker_pressure], s=35, c='black', zorder=5)
     live_plot_holder['contact_artists'].append(marker)
+
+    all_times = times + [marker_time]
+    all_pressures = actual_pressures + target_pressures + [marker_pressure]
+    if all_times:
+        ax.set_xlim(0, max(1.0, max(all_times)))
+    if all_pressures:
+        pressure_min = min(all_pressures)
+        pressure_max = max(all_pressures)
+        pressure_pad = max(1.0, (pressure_max - pressure_min) * 0.15)
+        ax.set_ylim(pressure_min - pressure_pad, pressure_max + pressure_pad)
 
     status = live_plot_holder.get('status')
     if status is not None:
@@ -195,7 +216,7 @@ def calibratePressure(ser, OutputLabel):
     sleep(0.1)
     # sweepButton.config(state='normal')
 
-def pressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder=None):
+def pressureSweep(win, ser, ref_strain, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder=None):
     cap.release()
     notebook = notebook_holder['nb']
     setupLivePressurePlot(live_plot_holder)
@@ -214,6 +235,7 @@ def pressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, ca
             parsed = parseContactLine(data)
             if parsed is not None:
                 markPressureContact(live_plot_holder, *parsed)
+                strain.append(ref_strain[int(parsed[2])])
             continue
         updateOutput(data, OutputLabel)
         if data.startswith("Done"):
@@ -326,8 +348,8 @@ def calibCheck(ser, OutputLabel):
 
 def threadedCalibratePressure(ser, OutputLabel):
     threading.Thread(target=calibratePressure, args=(ser, OutputLabel)).start()
-def threadedPressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder=None):
-    threading.Thread(target=pressureSweep, args=(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder)).start()
+def threadedPressureSweep(win, ser, ref_strain, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder=None):
+    threading.Thread(target=pressureSweep, args=(win, ser, ref_strain, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder)).start()
 
 # Exception
 class Pressure(Exception):
