@@ -11,17 +11,17 @@ from communication import calibCheck, threadedCalibratePressure, threadedPressur
 from gui import updateOutput, reset, exportCSV, delete, threadedUpdateFrame, updateFrame, font_resize, callback, openCamera
 
 def main():
-    commPort = '/dev/cu.usbmodem101'
+    commPort = '/dev/cu.usbmodem14101'
     ser = serial.Serial(commPort, baudrate = 9600)
     sleep(2)
 
 
-    # strain = np.array([1, 1.3375, 1.7375, 1.9375, 2.0375, 2.1375, 2.2375, 2.3375, 2.4375])
-    strain = np.array([1, 1.7375, 1.9375, 2.0375, 2.1375, 2.2375, 2.3375, 2.4375])
+    strain = np.array([1, 1.3375, 1.7375, 1.9375, 2.0375, 2.1375, 2.2375, 2.3375, 2.4375])
+    # strain = np.array([1, 1.7375, 1.9375, 2.0375, 2.1375, 2.2375, 2.3375, 2.4375])
 
     # Pandas dataframe to hold all data
-    # data = {'Pad number' : [0, 1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Young\'s Modulus', 'Time (ms)']}
-    data = {'Pad number' : [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Young\'s Modulus', 'Time (ms)']}
+    data = {'Pad number' : [0, 1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Young\'s Modulus', 'Time (ms)']}
+    # data = {'Pad number' : [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Young\'s Modulus', 'Time (ms)']}
     df = pd.DataFrame(data)
 
     ## Gui Interface

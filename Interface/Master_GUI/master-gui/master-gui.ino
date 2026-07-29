@@ -34,8 +34,8 @@ int sL[3] = { 8, 9, 10 };
 int MUXtable[8][3] = { { 1, 1, 1 }, { 1, 1, 0 }, { 1, 0, 1 }, { 1, 0, 0 }, { 0, 1, 1 }, { 0, 1, 0 }, { 0, 0, 1 }, { 0, 0, 0 } };
 
 int curPad = 1;
-// float stressStrain[8] = {0,0,0,0,0,0,0,0};
-float stressStrain[7] = {0, 0, 0, 0, 0, 0, 0};
+float stressStrain[8] = {0,0,0,0,0,0,0,0};
+// float stressStrain[7] = {0, 0, 0, 0, 0, 0, 0};
 
 float padRes[8] = {5, 5, 5, 5, 5, 5, 5, 5};
 
@@ -108,20 +108,20 @@ void loop(void) {
       pressureSweep();
       long t2 = millis();
       Serial.println("Done!");
-      // for (int i = 0; i < 8; i++) {
-      //   Serial.println(stressStrain[i]);
-      // }
-      for (int i = 0; i < 7; i++) {
+      for (int i = 0; i < 8; i++) {
         Serial.println(stressStrain[i]);
-      } 
+      }
+      // for (int i = 0; i < 7; i++) {
+      //   Serial.println(stressStrain[i]);
+      // } 
       Serial.print("Time: ");
       Serial.println(t2-t1);
-      // for(int i=0; i < 8; i++){
-      //   stressStrain[i] = 0;
-      // }
-      for(int i=0; i < 7; i++){
+      for(int i=0; i < 8; i++){
         stressStrain[i] = 0;
       }
+      // for(int i=0; i < 7; i++){
+      //   stressStrain[i] = 0;
+      // }
       Serial.print("Releasing Valve: ");
       releaseValve(1);
       delay(5000);
@@ -178,7 +178,7 @@ void calibCheck() {
 }
 
 void readAllPads(float res_arr[]) {
-  for(int k = 0; k < 7; k++) {
+  for(int k = 0; k < 8; k++) {
     selectPad(k);
     delay(50);
     res_arr[k] = ads1015.readADC_SingleEnded(3) * 3.0 / 1000;
@@ -229,7 +229,7 @@ void precondition(int cycles){
 // Testing Functions
 void pressureSweep() {
   // curPad = 0;
-  curPad = 1;
+  curPad = 0;
   pressure = pres_start;
   int sweep;
   precondition(10);
@@ -251,20 +251,20 @@ void pressureSweep() {
     float currentPressure = getPressure();
     Serial.print("Current Pressure (kPa): ");
     Serial.println(currentPressure);
-    streamPressureSample(pressure, currentPressure, curPad);
+    streamPressureSample(pressure, getPressure(), curPad);
     int count = 0;
     float error = 0.1;
     // Just in case pressure is not reached
     while (abs(getPressure()-pressure) > error){
       count++;
       if(count % 5 == 0) {
-        streamPressureSample(pressure, currentPressure, curPad);
+        streamPressureSample(pressure, getPressure(), curPad);
       }
       if (count > 100){
         break;
       }
     }
-    streamPressureSample(pressure, currentPressure, curPad);
+    streamPressureSample(pressure, getPressure(), curPad);
     runTest(curPad);
   }
 }
@@ -334,8 +334,8 @@ void resistanceRead() {
 
   if ((voltage < res_volt_thresh) && (curPad < 8)){
     float contactPressure = getPressure();
-    // stressStrain[curPad] = contactPressure;
-    stressStrain[curPad - 1] = contactPressure;
+    stressStrain[curPad] = contactPressure;
+    // stressStrain[curPad - 1] = contactPressure;
     streamPressureSample(pressure, contactPressure, curPad);
     streamContactMarker(curPad, contactPressure, voltage);
 
