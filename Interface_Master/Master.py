@@ -2,11 +2,10 @@ from time import sleep
 import serial
 import tkinter as tk
 from tkinter import *
-import tkinter.ttk as ttk
 from tkinter.scrolledtext import ScrolledText
 from ScrollableNotebook import ScrollableNotebook
 import config
-from gui import updateOutput, reset, exportCSV, delete, bind_font_resize, callback, openCamera, threadedPressureSweep, threadedCalibratePressure, runCalibCheck, changeSweepSettings
+from gui import reset, exportCSV, delete, bind_font_resize, callback, openCamera, threadedCalibratePressure, runCalibCheck, changeSweepSettings
 
 def main():
     commPort = '/dev/cu.usbmodem101'
@@ -101,7 +100,6 @@ def main():
     # Pressure Sweep Widget
     sweepButton = tk.Button(frame1, text='Open Camera', command=lambda: openCamera(canvas, win, OutputLabel, sweepButton, ser, strain, j, df, notebook_holder, live_plot_holder), anchor='center')
     sweepButton.grid(row=6, column=1)
-    # sweepButton.config(state='disabled')
     sweepButton.config(width=12, height=1)
     sweepButton.config()
 

@@ -1,6 +1,5 @@
 import tkinter as tk
 from tkinter import *
-import tkinter.ttk as ttk
 from ScrollableNotebook import ScrollableNotebook
 import pandas as pd
 import cv2
@@ -180,8 +179,6 @@ def updateParameters(A, C, E, Y, T, pads, a_label, C_label, eff_mod_label, young
     formatted_E = '{:0.3f}'.format(E)
     formatted_Y = '{:0.3f}'.format(Y)
     formatted_T = '{:0.0f}'.format(T)
-    for pad in pads:
-        formatted_pad = '{:0.2f}'.format(pad)
     # pad_text = "Pad 1: " + str(pads[1]) + "\n\nPad 2: " + str(pads[2]) + "\n\nPad 3: " + str(pads[3]) + "\n\nPad 4: " + str(pads[4]) + "\n\nPad 5: " + str(pads[5]) + "\n\nPad 6: " + str(pads[6]) + "\n\nPad 7: " + str(pads[7])
     pad_text = "Pad 0: " + str(pads[1]) + "\n\nPad 1: " + str(pads[2]) + "\n\nPad 2: " + str(pads[3]) + "\n\nPad 3: " + str(pads[4]) + "\n\nPad 4: " + str(pads[5]) + "\n\nPad 5: " + str(pads[6]) + "\n\nPad 6: " + str(pads[7]) + "\n\nPad 7: " + str(pads[8])
     arr = [*pads[1:], formatted_A, formatted_C, formatted_E, formatted_Y, formatted_T]
@@ -399,7 +396,7 @@ def runPressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap,
 
     if pads is not None:
         x, y = align_data(strain, pads)
-        coefficients, eff_mod, youngs_mod, intercept = analyze_data(x, y)
+        coefficients, eff_mod, youngs_mod, _ = analyze_data(x, y)
 
         def build(x=x, y=y, coefficients=coefficients, eff_mod=eff_mod,
                   youngs_mod=youngs_mod, elapsed=elapsed_ms, pads=pads.copy()):

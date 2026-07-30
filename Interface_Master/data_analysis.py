@@ -57,15 +57,10 @@ def analyze_data(strain, stress):
 
     # TODO 
 
-    eff_modulus = 0
     x = strain
     y = stress* -1
 
-    popt, pcov = curve_fit(func, x, y, maxfev=100000)
-    #fit_values = fit(strain' ,cur_stress',fit_type, 'StartPoint', [1, 1]);
-    #coeff = coeffvalues(fit_values)
-
-    eff_modulus = popt[0]*popt[1]*(-0.052*(popt[0]**3)+0.252*(popt[0]**2)+(0.053*popt[0])+1.09)
+    popt, _ = curve_fit(func, x, y, maxfev=100000)
 
     t = symbols('t')
     f = func(x, *popt)
@@ -81,7 +76,7 @@ def analyze_data(strain, stress):
             youngs_stress.append(y[i])
         else:
             break
-    popt2, pcov2 = curve_fit(func2, x, y, maxfev=100000)
+    popt2, _ = curve_fit(func2, x, y, maxfev=100000)
     #fit_values = fit(strain' ,cur_stress',fit_type, 'StartPoint', [1, 1]);
     #coeff = coeffvalues(fit_values)
 
@@ -91,6 +86,5 @@ def analyze_data(strain, stress):
     #regressResult = scipy.stats.linregress(youngs_strain, youngs_stress)
     #youngs_modulus = regressResult.slope
     #intercept = regressResult.intercept
-    print(youngs_strain)
 
     return popt, eff_modulus, youngs_modulus, intercept
