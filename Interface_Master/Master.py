@@ -5,24 +5,22 @@ from tkinter import *
 import tkinter.ttk as ttk
 from tkinter.scrolledtext import ScrolledText
 from ScrollableNotebook import ScrollableNotebook
-import pandas as pd
-import numpy as np
-from communication import calibCheck, threadedCalibratePressure, threadedPressureSweep, changeSweepSettings
-from gui import updateOutput, reset, exportCSV, delete, threadedUpdateFrame, updateFrame, font_resize, callback, openCamera
+import config
+from gui import updateOutput, reset, exportCSV, delete, bind_font_resize, callback, openCamera, threadedPressureSweep, threadedCalibratePressure, runCalibCheck, changeSweepSettings
 
 def main():
-    commPort = '/dev/cu.usbmodem14101'
-    ser = serial.Serial(commPort, baudrate = 9600)
+    commPort = '/dev/cu.usbmodem101'
+    ser = serial.Serial(commPort, baudrate = 9600, timeout = 5)
     sleep(2)
 
 
-    strain = np.array([1, 1.3375, 1.7375, 1.9375, 2.0375, 2.1375, 2.2375, 2.3375, 2.4375])
-    # strain = np.array([1, 1.7375, 1.9375, 2.0375, 2.1375, 2.2375, 2.3375, 2.4375])
+    # Stretch ratios and the dataframe row template are both derived from
+    # config.PAD_COUNT so they cannot drift apart. To change the pad count, edit
+    # config.py only.
+    strain = config.STRAIN_RATIOS
 
     # Pandas dataframe to hold all data
-    data = {'Pad number' : [0, 1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Young\'s Modulus', 'Time (ms)']}
-    # data = {'Pad number' : [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Young\'s Modulus', 'Time (ms)']}
-    df = pd.DataFrame(data)
+    df = config.new_dataframe()
 
     ## Gui Interface
     # Window
@@ -74,25 +72,25 @@ def main():
     presStart = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
     presIncr = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
     presNumIncr = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
-    impThresh = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
+    voltThresh = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
 
     presStart.insert(0, "-1")
     presIncr.insert(0, "-1")
     presNumIncr.insert(0, "20")
-    impThresh.insert(0, "500")
+    voltThresh.insert(0, "4.5")
     presStart.grid(column=1, row=0, sticky="nsew")
     presIncr.grid(column=1, row=1, sticky="nsew")
     presNumIncr.grid(column=1, row=2, sticky="nsew")
-    impThresh.grid(column=1, row=3, sticky="nsew")
+    voltThresh.grid(column=1, row=3, sticky="nsew")
 
     presStartLabel = tk.Label(frame1, text='Starting Pressure (kPa)', width = 18, height = 1)
     presIncrLabel = tk.Label(frame1, text='Pressure Increment (kPa)', width = 18, height = 1)
     presNumIncrLabel = tk.Label(frame1, text='Number of Increments', width = 18, height = 1)
-    impThreshLabel = tk.Label(frame1, text='Impedance Threshold', width = 18, height = 1)
+    voltThreshLabel = tk.Label(frame1, text='Contact Voltage (V)', width = 18, height = 1)
     presStartLabel.grid(column=0, row=0, sticky="nsew")
     presIncrLabel.grid(column=0, row=1, sticky="nsew")
     presNumIncrLabel.grid(column=0, row=2, sticky="nsew")
-    impThreshLabel.grid(column=0, row=3, sticky="nsew")
+    voltThreshLabel.grid(column=0, row=3, sticky="nsew")
 
     # Buttons
     # Calibrate widget
@@ -108,12 +106,12 @@ def main():
     sweepButton.config()
 
     # Set Pressure Widget
-    set = tk.Button(frame1, text="Set Sweep Settings", command=lambda : changeSweepSettings(presStart, presIncr, presNumIncr, impThresh, ser, OutputLabel), anchor='center')
+    set = tk.Button(frame1, text="Set Sweep Settings", command=lambda : changeSweepSettings(presStart, presIncr, presNumIncr, voltThresh, ser, OutputLabel), anchor='center')
     set.grid(row=4, column=1)
     set.config(width=12, height=1)
 
     # --- TROUBLESHOOTING: manual calibration check button ---
-    calibCheckBtn = tk.Button(frame1, text='Calib Check', command=lambda: calibCheck(ser, OutputLabel), anchor='center')
+    calibCheckBtn = tk.Button(frame1, text='Calib Check', command=lambda: runCalibCheck(ser, OutputLabel), anchor='center')
     calibCheckBtn.grid(row=8, column=1)
     calibCheckBtn.config(width=12, height=1)
     # --- END TROUBLESHOOTING ---
@@ -155,7 +153,7 @@ def main():
 
     
 
-    win.bind('<Configure>', lambda event: font_resize(o=o))
+    bind_font_resize(win, o)
     win.mainloop()
 
 if __name__ == "__main__":

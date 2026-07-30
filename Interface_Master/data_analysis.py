@@ -3,6 +3,10 @@ import scipy
 from scipy.optimize import curve_fit
 from sympy import symbols, diff, lambdify
 
+def fit_calibration(pressures, voltages):
+    result = scipy.stats.linregress(pressures, voltages)
+    return result.slope, result.intercept, result.rvalue ** 2
+
 def func(x, a, C):
     return a* C * ((x ** 2) - (1 / x))* np.exp(a * ((x ** 2) + (2 / x) - 3))
 

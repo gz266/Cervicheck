@@ -18,7 +18,6 @@ char userInput;
 float pres_start = -1;
 float pres_incr = -1;
 int pres_num_incr =  30;
-double imp_thresh = 500;
 float res_volt_thresh = 4.5;
 
 int i;
@@ -148,7 +147,15 @@ void loop(void) {
       data = Serial.readStringUntil('\r');
       pres_num_incr = data.toInt();
       data = Serial.readStringUntil('\r');
-      imp_thresh = data.toDouble();
+      float thresh = data.toFloat();
+      if (thresh > 0 && thresh <= 5.0) {
+        res_volt_thresh = thresh;
+      } else {
+        Serial.print("Ignored out-of-range contact threshold: ");
+        Serial.println(thresh);
+      }
+      Serial.print("Contact voltage threshold (V): ");
+      Serial.println(res_volt_thresh);
     }
     if(userInput == 't'){
       data = Serial.readStringUntil('\r');
