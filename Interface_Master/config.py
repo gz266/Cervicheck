@@ -21,7 +21,7 @@ ANCHOR_STRAIN = 1.0
 # stretched) to back. Pads are added at the FRONT, so a smaller PAD_COUNT drops
 # entries from the head of this list: at 7 pads the 1.3375 position does not
 # exist and is excluded.
-PAD_STRAIN_RATIOS = [1.3375, 1.7375, 1.9375, 2.0375, 2.1375, 2.2375, 2.3375, 2.4375]
+PAD_STRAIN_RATIOS = [1.17, 1.33666, 1.50332, 1.66998, 1.83664, 2.0033, 2.16996, 2.33662]
 
 if not 1 <= PAD_COUNT <= len(PAD_STRAIN_RATIOS):
     raise ValueError(
