@@ -349,7 +349,7 @@ void resistanceRead() {
     Serial.print("Pad ");
     Serial.print(curPad);
     Serial.print(" has been contacted at ");
-    Serial.print(voltage);
+    Serial.print(padRes[curPad]);
     Serial.println(" (volts)!");
     curPad++;
 
