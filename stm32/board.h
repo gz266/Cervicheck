@@ -10,6 +10,9 @@
 #include "ADS1015_ADS1115.h"
 #include "MCP4725.h"
 
+extern UART_HandleTypeDef huart2;
+extern I2C_HandleTypeDef hi2c1;
+
 // AD5933 Constants
 #define START_FREQ      10000
 #define FREQ_INCR       10000
