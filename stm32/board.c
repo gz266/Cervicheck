@@ -20,17 +20,20 @@ double phase[NUM_INCR + 1];
 
 // MUX table
 int MUXtable[8][3] = {
-    { 1, 0, 1 }, { 1, 1, 0 }, { 0, 0, 0 }, { 1, 0, 0 },
-    { 0, 1, 0 }, { 0, 0, 1 }, { 0, 1, 1 }, { 1, 1, 1 }
+    { 1, 1, 1 }, { 1, 1, 0 }, { 1, 0, 1 }, { 1, 0, 0 },
+    { 0, 1, 1 }, { 0, 1, 0 }, { 0, 0, 1 }, { 0, 0, 0 }
 };
 
-int curPad = 1;
-float stressStrain[7] = {0,0,0,0,0,0,0};
+int curPad = 0;
+float stressStrain[NUM_PADS] = {0,0,0,0,0,0,0,0};
+float padRes[NUM_PADS] = {5,5,5,5,5,5,5,5};
 float pressure;
 
 // Pressure Control Constants
+// y = mx where y is digital value to supply DAC and x is desired pressure (-kPa)
 float slope = -79.24;
 float yint = 44.45;
+float res_volt_thresh = 4.5;
 
 // Device
 ADS1xx5_I2C ads;
@@ -63,13 +66,33 @@ void releaseValve(int a) {
     }
 }
 
+void calibCheck(void) {
+    for (int k = 0; k < NUM_PADS; k++) {
+        selectPad(k);
+        HAL_Delay(50);
+        int val = ADSreadADC_SingleEnded(&ads, 3);
+        float voltage = 3.0 * val / 1000;
+        printf("CALIBCHECK,Pad %d Voltage: %.2f\r\n", k, voltage);
+    }
+    printf("DONE\r\n");
+}
+
+void readAllPads(float res_arr[]) {
+    for (int k = 0; k < NUM_PADS; k++) {
+        selectPad(k);
+        HAL_Delay(50);
+        res_arr[k] = ADSreadADC_SingleEnded(&ads, 3) * 3.0 / 1000;
+    }
+}
+
 void calibratePressure(void) {
     printf("Voltage:\r\n");
     printf("50\r\n");
     printf("250\r\n");
     printf("500\r\n");
-    printf("1500\r\n");
-    printf("2500\r\n");
+    printf("750\r\n");
+    printf("1000\r\n");
+    printf("1250\r\n");
     printf("Pressure:\r\n");
 
     for (int i = 50; i < 251; i += 200) {
@@ -78,7 +101,7 @@ void calibratePressure(void) {
         printf("%.2f\r\n", getPressure());
     }
 
-    for (int i = 500; i < 2501; i += 1000) {
+    for (int i = 500; i < 1251; i += 250) {
     	MCP4725_setValue(&dac, (uint16_t)i, MCP4725_FAST_MODE, MCP4725_POWER_DOWN_OFF);
         HAL_Delay(3000);
         printf("%.2f\r\n", getPressure());
@@ -92,56 +115,47 @@ void precondition(int cycles) {
         // On
         releaseValve(0);
         selectPressure(0.5);
-        HAL_Delay(100);
-        printf("Pressure Held: \r\n");
-        printf("%.2f\r\n", getPressure());
+        HAL_Delay(200);
+        printf("Pressure Held: %.2f\r\n", getPressure());
         // Off
         releaseValve(1);
         selectPressure(0);
-        HAL_Delay(250);
-        printf("Pressure Released: \r\n");
-        printf("%.2f\r\n", getPressure());
+        HAL_Delay(500);
+        printf("Pressure Released: %.2f\r\n", getPressure());
     }
     releaseValve(0);
 }
 
 void runTest(int padnum) {
-    printf("Pad \r\n");
-    printf("%d\r\n", padnum);
-    printf(" being tested\r\n");
-    printf("Pressure Tested (kPa): \r\n");
-    printf("%.2f\r\n", getPressure());
+    printf("Pad %d being tested\r\n", padnum);
+    printf("Pressure Tested (kPa): %.2f\r\n", getPressure());
 
     selectPad(padnum);
     int time1 = HAL_GetTick();
-    frequencySweepStressStrain();
+    resistanceRead();
     int time2 = HAL_GetTick();
 
-    printf("Test time (ms): \r\n");
-    printf("%d\r\n", time2 - time1);
+    printf("Test time (ms): %d\r\n", time2 - time1);
 }
 
 void pressureSweep(void) {
-    curPad = 1;
+    curPad = 0;
     pressure = pres_start;
-    int sweep;
     precondition(10);
     for (int i = 0; i < pres_num_incr; i++, pressure += pres_incr) {
-        if (curPad == 8) {
+        if (curPad == NUM_PADS) {
             break;
         }
         if ((i < pres_num_incr + 1) == 0) {
             printf("Break\r\n");
             break;
         }
-        printf("Sweeping at Pressure (kPa): \r\n");
-        printf("%.2f\r\n", pressure);
+        printf("Sweeping at Pressure (kPa): %.2f\r\n", pressure);
 
         selectPressure(pressure);
         float currentPressure = getPressure();
 
-        printf("Current Pressure (kPa): \r\n");
-        printf("%.2f\r\n", currentPressure);
+        printf("Current Pressure (kPa): %.2f\r\n", currentPressure);
 
         streamPressureSample(pressure, currentPressure, curPad);
         int count = 0;
@@ -162,81 +176,33 @@ void pressureSweep(void) {
 }
 
 void resistanceRead(void) {
-    int val = ADSreadADC_SingleEnded(&ads, 3);
-    float voltage = 3.0 * val / 1000;
-    if ((voltage < res_volt_thresh) && (curPad < 8)) {
-        stressStrain[curPad-1] = getPressure();
-        printf("Pad \r\n");
-        printf("%d\r\n", curPad);
-        printf(" has been contacted at \r\n");
-        printf("%.2f\r\n", voltage);
-        printf(" (volts)!\r\n");
+    readAllPads(padRes);
+    float voltage = 5.0;
+    for (int v = curPad; v < NUM_PADS; v++) {
+        if (padRes[v] < res_volt_thresh) {
+            voltage = padRes[v];
+            curPad = v;
+        } else {
+            break;
+        }
+    }
+
+    if ((voltage < res_volt_thresh) && (curPad < NUM_PADS)) {
+        float contactPressure = getPressure();
+        stressStrain[curPad] = contactPressure;
+        streamPressureSample(pressure, contactPressure, curPad);
+        streamContactMarker(curPad, contactPressure, voltage);
+        printf("Pad %d has been contacted at %.2f (volts)!\r\n", curPad, padRes[curPad]);
         curPad++;
     } else {
-        printf("Pad \r\n");
-        printf("%d\r\n", curPad);
-        printf(" has not been contacted at \r\n");
-        printf("%.2f\r\n", voltage);
-        printf(" (volts)\r\n");
+        printf("Pad %d has not been contacted at %.2f (volts)\r\n", curPad, voltage);
     }
 }
 
-void loop(void) {
-    uint8_t userInput;
-    char data[20];
+void streamPressureSample(float targetPressure, float actualPressure, int padnum) {
+    printf("PRESSURE,%lu,%.2f,%.2f,%d\r\n", (unsigned long)HAL_GetTick(), targetPressure, actualPressure, padnum);
+}
 
-    MCP4725_setValue(&dac, (uint16_t)(0*4095)/5, MCP4725_FAST_MODE, MCP4725_POWER_DOWN_OFF);
-
-    if (HAL_UART_Receive(&huart2, &userInput, 1, 10) == HAL_OK) {
-
-        if (userInput == 's') {
-            long t1 = HAL_GetTick();
-            pressureSweep();
-            long t2 = HAL_GetTick();
-            printf("Done!\r\n");
-            for (int i = 1; i < 8; i++) {
-                printf("%.2f\r\n", stressStrain[i-1]);
-            }
-            printf("Time: \r\n");
-            printf("%ld\r\n", t2-t1);
-            for (int i = 0; i < 7; i++) {
-                stressStrain[i] = 0;
-            }
-            printf("Releasing Valve: \r\n");
-            releaseValve(1);
-            HAL_Delay(5000);
-            releaseValve(0);
-        }
-
-        if (userInput == 'p') {
-            calibratePressure();
-        }
-
-        if (userInput == 'r') {
-            HAL_UART_Receive(&huart2, (uint8_t*)data, sizeof(data), 1000);
-            slope = atof(data);
-            memset(data, 0, sizeof(data));
-            HAL_UART_Receive(&huart2, (uint8_t*)data, sizeof(data), 1000);
-            yint = atof(data);
-        }
-
-        if (userInput == 'i') {
-            HAL_UART_Receive(&huart2, (uint8_t*)data, sizeof(data), 1000);
-            pres_start = atof(data);
-            memset(data, 0, sizeof(data));
-            HAL_UART_Receive(&huart2, (uint8_t*)data, sizeof(data), 1000);
-            pres_incr = atof(data);
-            memset(data, 0, sizeof(data));
-            HAL_UART_Receive(&huart2, (uint8_t*)data, sizeof(data), 1000);
-            pres_num_incr = atoi(data);
-            memset(data, 0, sizeof(data));
-            HAL_UART_Receive(&huart2, (uint8_t*)data, sizeof(data), 1000);
-            imp_thresh = atof(data);
-        }
-
-        if (userInput == 't') {
-            HAL_UART_Receive(&huart2, (uint8_t*)data, sizeof(data), 1000);
-            releaseValve(atoi(data));
-        }
-    }
+void streamContactMarker(int padnum, float contactPressure, double impedance) {
+    printf("CONTACT,%lu,%d,%.2f,%.2f\r\n", (unsigned long)HAL_GetTick(), padnum, contactPressure, impedance);
 }
