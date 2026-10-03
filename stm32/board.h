@@ -19,6 +19,9 @@ extern I2C_HandleTypeDef hi2c1;
 #define NUM_INCR        2
 #define REF_RESIST      300
 
+// Pad 0 is the calibration resistor, pads 1-7 are on the flex PCB
+#define NUM_PADS        8
+
 // Pressure Constants
 extern float pres_start;
 extern float pres_incr;
@@ -28,12 +31,14 @@ extern double gain[NUM_INCR + 1];
 extern double phase[NUM_INCR + 1];
 extern int MUXtable[8][3];
 extern int curPad;
-extern float stressStrain[7];
+extern float stressStrain[NUM_PADS];
+extern float padRes[NUM_PADS];
 extern float pressure;
 
 // Pressure Constants
 extern float slope;
 extern float yint;
+extern float res_volt_thresh;
 
 // Device
 extern ADS1xx5_I2C ads;
@@ -49,7 +54,10 @@ void selectPad(int p);
 void selectPressure(float p);
 void calibratePressure(void);
 float getPressure(void);
-void loop(void);
+void readAllPads(float res_arr[]);
+void calibCheck(void);
+void streamPressureSample(float targetPressure, float actualPressure, int padnum);
+void streamContactMarker(int padnum, float contactPressure, double impedance);
 
 
 #endif /* BOARD_H_ */
