@@ -18,12 +18,13 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "ADS1015_ADS1115.h"
-#include "MCP4725.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "board.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,15 +54,36 @@ UART_HandleTypeDef huart2;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_I2C1_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+// Read UART2 until '\r' or timeout, like Arduino's Serial.readStringUntil('\r').
+// buf is always null-terminated; '\n' is ignored.
+static void readLine(char *buf, size_t len, uint32_t timeout_ms)
+{
+  size_t n = 0;
+  uint8_t ch;
+  uint32_t start = HAL_GetTick();
 
+  memset(buf, 0, len);
+  while (n < len - 1 && (HAL_GetTick() - start) < timeout_ms) {
+    if (HAL_UART_Receive(&huart2, &ch, 1, 10) != HAL_OK) {
+      continue;
+    }
+    if (ch == '\r') {
+      break;
+    }
+    if (ch == '\n') {
+      continue;
+    }
+    buf[n++] = (char)ch;
+  }
+}
 /* USER CODE END 0 */
 
 /**
@@ -93,17 +115,85 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_I2C1_Init();
   MX_USART2_UART_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+  dac = MCP4725_init(&hi2c1, MCP4725A0_ADDR_A00, 5.0);
   ADS1015(&ads, &hi2c1, ADS_ADDR_GND);
-  dac = MCP4725_init(&hi2c1, MCP4725A0_ADDR_A00, 3.30);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4,  GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8,  GPIO_PIN_RESET);
+  selectPad(0);
+  // Unbuffered stdout so printf output is sent immediately, even without a newline
+  setvbuf(stdout, NULL, _IONBF, 0);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  uint8_t userInput;
+	  char data[20];
+
+	  if (HAL_UART_Receive(&huart2, &userInput, 1, 10) == HAL_OK) {
+
+		  if (userInput == 's') {
+			  long t1 = HAL_GetTick();
+			  pressureSweep();
+			  long t2 = HAL_GetTick();
+			  printf("Done!\r\n");
+			  for (int i = 0; i < NUM_PADS; i++) {
+				  printf("%.2f\r\n", stressStrain[i]);
+			  }
+			  printf("Time: %ld\r\n", t2 - t1);
+			  for (int i = 0; i < NUM_PADS; i++) {
+				  stressStrain[i] = 0;
+			  }
+			  printf("Releasing Valve: \r\n");
+			  releaseValve(1);
+			  HAL_Delay(5000);
+			  releaseValve(0);
+		  }
+
+		  if (userInput == 'p') {
+			  calibratePressure();
+			  selectPressure(0);
+		  }
+
+		  if (userInput == 'r') {
+			  readLine(data, sizeof(data), 1000);
+			  slope = atof(data);
+			  readLine(data, sizeof(data), 1000);
+			  yint = atof(data);
+		  }
+
+		  if (userInput == 'i') {
+			  readLine(data, sizeof(data), 1000);
+			  pres_start = atof(data);
+			  readLine(data, sizeof(data), 1000);
+			  pres_incr = atof(data);
+			  readLine(data, sizeof(data), 1000);
+			  pres_num_incr = atoi(data);
+			  readLine(data, sizeof(data), 1000);
+			  float thresh = atof(data);
+			  if (thresh > 0 && thresh <= 5.0f) {
+				  res_volt_thresh = thresh;
+			  } else {
+				  printf("Ignored out-of-range contact threshold: %.2f\r\n", thresh);
+			  }
+			  printf("Contact voltage threshold (V): %.2f\r\n", res_volt_thresh);
+		  }
+
+		  if (userInput == 't') {
+			  readLine(data, sizeof(data), 1000);
+			  releaseValve(atoi(data));
+		  }
+
+		  // --- TROUBLESHOOTING: check ADC/pad-0 calibration resistor baseline ---
+		  if (userInput == 'c') {
+			  calibCheck();
+		  }
+		  // --- END TROUBLESHOOTING ---
+	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -131,7 +221,13 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLM = 16;
+  RCC_OscInitStruct.PLL.PLLN = 336;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+  RCC_OscInitStruct.PLL.PLLQ = 2;
+  RCC_OscInitStruct.PLL.PLLR = 2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -141,12 +237,12 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
     Error_Handler();
   }
@@ -226,13 +322,52 @@ static void MX_USART2_UART_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
   /* USER CODE BEGIN MX_GPIO_Init_1 */
 
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4|LD2_Pin|GPIO_PIN_8|GPIO_PIN_9, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : B1_Pin */
+  GPIO_InitStruct.Pin = B1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PA4 LD2_Pin PA8 PA9 */
+  GPIO_InitStruct.Pin = GPIO_PIN_4|LD2_Pin|GPIO_PIN_8|GPIO_PIN_9;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PC7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_7;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB6 */
+  GPIO_InitStruct.Pin = GPIO_PIN_6;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
@@ -257,7 +392,8 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-#ifdef USE_FULL_ASSERT
+
+#ifdef  USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
