@@ -2,32 +2,35 @@ from time import sleep
 import serial
 import tkinter as tk
 from tkinter import *
-import tkinter.ttk as ttk
 from tkinter.scrolledtext import ScrolledText
 from ScrollableNotebook import ScrollableNotebook
-import pandas as pd
-import numpy as np
-from communication import threadedCalibratePressure, threadedPressureSweep, changeSweepSettings
-from gui import updateOutput, reset, exportCSV, delete, threadedUpdateFrame, updateFrame, font_resize, callback, openCamera
+import config
+from gui import reset, exportCSV, delete, bind_font_resize, callback, openCamera, threadedCalibratePressure, runCalibCheck, changeSweepSettings
 
 def main():
-    commPort = 'COM8'
-    ser = serial.Serial(commPort, baudrate = 9600)
+    commPort = '/dev/cu.usbmodem103'
+    ser = serial.Serial(commPort, baudrate = 115200, timeout = 5)
     sleep(2)
 
-    strain = np.array([1, 1.05, 1.15, 1.25, 1.35, 1.45, 1.55, 1.65])
+
+    # Stretch ratios and the dataframe row template are both derived from
+    # config.PAD_COUNT so they cannot drift apart. To change the pad count, edit
+    # config.py only.
+    strain = config.STRAIN_RATIOS
 
     # Pandas dataframe to hold all data
-    data = {'Pad number' : [1, 2, 3, 4, 5, 6, 7, 'α', 'C', 'Effective Modulus', 'Young\'s Modulus', 'Time (ms)']}
-    df = pd.DataFrame(data)
+    df = config.new_dataframe()
 
     ## Gui Interface
     # Window
     win = Tk() 
     win.grid_rowconfigure(0, weight=1)
     win.grid_columnconfigure(0, weight=1)
+    win.grid_columnconfigure(2, weight=1)
+    win.grid_columnconfigure(3, weight=1)
     win.grid_columnconfigure(4, weight=1)
     frame1 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
+    frame3 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
     frame2 = tk.Frame(win, relief=tk.RAISED, borderwidth=1)
 
     frame1.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
@@ -35,6 +38,10 @@ def main():
     frame1.grid_columnconfigure(0, weight=1)
     frame1.grid_columnconfigure(1, weight=1)
     frame1.grid_rowconfigure(7, weight=1)
+
+    frame3.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+    frame3.grid_rowconfigure(1, weight=1)
+    frame3.grid_columnconfigure(0, weight=1)
 
     frame2.grid(row=0, column=4, padx=10, pady=10, sticky="nsew")
     frame2.grid_rowconfigure(0, weight=1)
@@ -46,6 +53,16 @@ def main():
 
     j = tk.IntVar(value=1)
 
+    livePlotLabel = tk.Label(frame3, text='Live Pressure')
+    livePlotLabel.grid(column=0, row=0, sticky="nsew")
+    livePlotArea = tk.Frame(frame3, relief=tk.RAISED, borderwidth=1)
+    livePlotArea.grid(column=0, row=1, sticky="nsew")
+    livePlotArea.grid_rowconfigure(0, weight=1)
+    livePlotArea.grid_columnconfigure(0, weight=1)
+    livePlotStatus = tk.Label(frame3, text='Waiting for sweep')
+    livePlotStatus.grid(column=0, row=2, sticky="nsew")
+    live_plot_holder = {'parent': livePlotArea, 'status': livePlotStatus}
+
     ## Frame 1 Widgets
 
     # Entry widgets
@@ -54,25 +71,25 @@ def main():
     presStart = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
     presIncr = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
     presNumIncr = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
-    impThresh = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
+    voltThresh = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
 
     presStart.insert(0, "-1")
     presIncr.insert(0, "-1")
     presNumIncr.insert(0, "20")
-    impThresh.insert(0, "500")
+    voltThresh.insert(0, "4.5")
     presStart.grid(column=1, row=0, sticky="nsew")
     presIncr.grid(column=1, row=1, sticky="nsew")
     presNumIncr.grid(column=1, row=2, sticky="nsew")
-    impThresh.grid(column=1, row=3, sticky="nsew")
+    voltThresh.grid(column=1, row=3, sticky="nsew")
 
     presStartLabel = tk.Label(frame1, text='Starting Pressure (kPa)', width = 18, height = 1)
     presIncrLabel = tk.Label(frame1, text='Pressure Increment (kPa)', width = 18, height = 1)
     presNumIncrLabel = tk.Label(frame1, text='Number of Increments', width = 18, height = 1)
-    impThreshLabel = tk.Label(frame1, text='Impedance Threshold', width = 18, height = 1)
+    voltThreshLabel = tk.Label(frame1, text='Contact Voltage (V)', width = 18, height = 1)
     presStartLabel.grid(column=0, row=0, sticky="nsew")
     presIncrLabel.grid(column=0, row=1, sticky="nsew")
     presNumIncrLabel.grid(column=0, row=2, sticky="nsew")
-    impThreshLabel.grid(column=0, row=3, sticky="nsew")
+    voltThreshLabel.grid(column=0, row=3, sticky="nsew")
 
     # Buttons
     # Calibrate widget
@@ -81,16 +98,21 @@ def main():
     calibrateBtn.config(width=12, height=1)
 
     # Pressure Sweep Widget
-    sweepButton = tk.Button(frame1, text='Open Camera', command=lambda: openCamera(canvas, win, OutputLabel, sweepButton, ser, strain, j, df, notebook_holder), anchor='center')
+    sweepButton = tk.Button(frame1, text='Open Camera', command=lambda: openCamera(canvas, win, OutputLabel, sweepButton, ser, strain, j, df, notebook_holder, live_plot_holder), anchor='center')
     sweepButton.grid(row=6, column=1)
-    # sweepButton.config(state='disabled')
     sweepButton.config(width=12, height=1)
     sweepButton.config()
 
     # Set Pressure Widget
-    set = tk.Button(frame1, text="Set Sweep Settings", command=lambda : changeSweepSettings(presStart, presIncr, presNumIncr, impThresh, ser, OutputLabel), anchor='center')
+    set = tk.Button(frame1, text="Set Sweep Settings", command=lambda : changeSweepSettings(presStart, presIncr, presNumIncr, voltThresh, ser, OutputLabel), anchor='center')
     set.grid(row=4, column=1)
     set.config(width=12, height=1)
+
+    # --- TROUBLESHOOTING: manual calibration check button ---
+    calibCheckBtn = tk.Button(frame1, text='Calib Check', command=lambda: runCalibCheck(ser, OutputLabel), anchor='center')
+    calibCheckBtn.grid(row=8, column=1)
+    calibCheckBtn.config(width=12, height=1)
+    # --- END TROUBLESHOOTING ---
 
     # Export CSV Widget
     exportBtn = tk.Button(frame1, text='Export CSV', command=lambda : exportCSV(df, OutputLabel), anchor='center')
@@ -111,6 +133,7 @@ def main():
     canvas.grid(row=7, column=0, columnspan=2, sticky="nsew")
 
     # Notebook for graphs (to be used when graph is actually produced)
+
     notebook = ScrollableNotebook(win, tabmenu = False)
     notebook_holder = {}
     notebook_holder['nb'] = notebook
@@ -128,7 +151,7 @@ def main():
 
     
 
-    win.bind('<Configure>', lambda event: font_resize(o=o))
+    bind_font_resize(win, o)
     win.mainloop()
 
 if __name__ == "__main__":
