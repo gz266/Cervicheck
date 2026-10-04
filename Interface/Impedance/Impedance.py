@@ -39,6 +39,7 @@ def changeSweepSettings():
     sleep(0.1)
     long_text = "Impedance Settings Changed:\nStart Frequency: " + startFreq.strip('\r') + "(Hz)" + "\nFrequency Increment: " + freqIncr.strip('\r') + " (Hz)" + "\nNumber of Increments: " + numIncr.strip('\r') + "\nReference Resistance: " + refRes.strip('\r') + " (Ohms)"
     updateOutput(long_text)
+    
 
 def setChannel():
     ser.write(b'c')
@@ -65,6 +66,15 @@ def frequencySweep():
         #     frequency.append(int(data.split(':')[0])) 
         # if data.startswith('Performing'):
         #     i = 1
+
+def autoSweep():
+    ser.write(b'a')
+    while True:
+        data = ser.readline().decode('ascii')
+        updateOutput(data)
+        if data.startswith("Done"):
+            break
+
 
 def updateOutput(long):
     OutputLabel.insert(tk.END, long)
@@ -111,6 +121,9 @@ impedanceSweep.grid(row=6, column=1)
 muxChannel = tk.Button(frame2, text='Set Channel', command=lambda : setChannel())
 muxChannel.grid(row=3, column=0)
 
+autoSweepBtn = tk.Button(frame1, text='Auto Sweep', command=lambda : autoSweep())
+autoSweepBtn.grid(row=7, column=1)
+
 # Entry
 
 Start_Freq = tk.Entry(frame1, bd=6, width=8, validate='key', validatecommand=(vcmd, '%P'))
@@ -134,8 +147,8 @@ Ref_Res.grid(column=1, row=3, sticky="nsew")
 
 Channel.grid(column=0, row=2, sticky="nsew")
 
-presStartLabel = tk.Label(frame1, text='Starting Frequency (kHz)')
-presIncrLabel = tk.Label(frame1, text='Frequency Increment (kHz)')
+presStartLabel = tk.Label(frame1, text='Starting Frequency (Hz)')
+presIncrLabel = tk.Label(frame1, text='Frequency Increment (Hz)')
 presNumIncrLabel = tk.Label(frame1, text='Number of Increments')
 refResLabel = tk.Label(frame1, text='Reference Resistance (Ohms)')
 

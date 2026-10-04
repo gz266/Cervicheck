@@ -10,12 +10,23 @@ int start_freq = 10000;
 int freq_incr = 5000;
 int num_incr = 5;
 int ref_resist = 270;
+const int REF_RES_0 = 330;
+const int REF_RES_1 = 3300;
+const int REF_RES_2 = 5600;
+const int REF_RES_3 = 10000;
+const int REF_RES_4 = 15000;
+const int REF_RES_5 = 18000;
+const int REF_RES_6 = 22000;
+const int REF_RES_7 = 27000;
 int channel = 0;
 
 char userInput;
 String data;
 
+double gain_low[20];
+double gain_high[20];
 double gain[20];
+double impedance_arr[10];
 double phase[20];
 double phaseRef[20];
 
@@ -76,6 +87,9 @@ void loop(void) {
       Serial.println(channel);
       selectPad(channel);
     }
+    if(userInput == 'a'){
+      autoSweep();
+    }
   }
 
 }
@@ -119,13 +133,12 @@ void frequencySweepEasy() {
 }
 
 void calibrateAD5933(int start_freq, int freq_incr, int num_incr, int reference) {
-  
   if (!(AD5933::reset() && AD5933::setInternalClock(true) && AD5933::setStartFrequency(start_freq) && AD5933::setIncrementFrequency(freq_incr) && AD5933::setNumberIncrements(num_incr) && AD5933::setPGAGain(PGA_GAIN_X1))) {
     Serial.println("FAILED in initialization!");
     while (true)
       ;
   }
-  Serial.println("Re-Initialized!");
+  
 
   // Perform calibration sweep
   if (!AD5933::calibrate(gain, phaseRef, reference, num_incr + 1)) {
@@ -133,9 +146,49 @@ void calibrateAD5933(int start_freq, int freq_incr, int num_incr, int reference)
     while (true)
       ;
   }
-  Serial.println("Re-Calibrated!");
-
+  // for(int i = 0; i < 20; i) {
+  //   Serial.print("Gain: ");
+  //   Serial.println(gain[i]);
+  // }
 }
+// void calibrateAD5933TwoPoint(int start_freq, int freq_incr, int num_incr, int reference) {
+  
+//   if (!(AD5933::reset() && AD5933::setInternalClock(true) && AD5933::setStartFrequency(start_freq - 5000) && AD5933::setIncrementFrequency(freq_incr) && AD5933::setNumberIncrements(num_incr) && AD5933::setPGAGain(PGA_GAIN_X1))) {
+//     Serial.println("FAILED in initialization!");
+//     while (true)
+//       ;
+//   }
+  
+
+//   // Perform calibration sweep
+//   if (!AD5933::calibrate(gain_low, phaseRef, reference, num_incr + 1)) {
+//     Serial.println("Re-Calibration failed...");
+//     while (true)
+//       ;
+//   }
+//   if (!(AD5933::reset() && AD5933::setInternalClock(true) && AD5933::setStartFrequency(start_freq + 5000) && AD5933::setIncrementFrequency(freq_incr) && AD5933::setNumberIncrements(num_incr) && AD5933::setPGAGain(PGA_GAIN_X1))) {
+//     Serial.println("FAILED in initialization!");
+//     while (true)
+//       ;
+//   }
+//   // Perform calibration sweep
+//   if (!AD5933::calibrate(gain_high, phaseRef, reference, num_incr + 1)) {
+//     Serial.println("Re-Calibration failed...");
+//     while (true)
+//       ;
+//   }
+//   Serial.println("Re-Initialized!");
+//   Serial.println("Re-Calibrated!");
+
+//   for(int i=0; i < 20; i++){
+//     Serial.print("Gain low: ");
+//     Serial.println(gain_low[i]);
+//     Serial.print("Gain high: ");
+//     Serial.println(gain_high[i]);
+//     gain[i] = 0.5 * (gain_low[i] + gain_high[i]);
+//   }
+//   Serial.println("Done");
+// }
 
 // Mux Control Function
 void selectPad(int p) {
@@ -144,4 +197,105 @@ void selectPad(int p) {
   digitalWrite(sL[1], MUXtable[p][1]);
   digitalWrite(sL[2], MUXtable[p][2]);
   digitalWrite(sL[3], MUXtable[p][3]);
+}
+
+// Impedance algorithm
+void autoSweep(){
+    selectPad(11);
+    calibrateAD5933(start_freq, freq_incr, num_incr, REF_RES_3);
+    Serial.println("Performing impedance sweep...");
+    selectPad(0);
+    frequencySweepEasy();
+    if(impedance_arr[2] < 8500){
+      selectPad(9);
+      calibrateAD5933(start_freq, freq_incr, num_incr, REF_RES_1);
+      selectPad(0);
+      frequencySweepEasy();
+      if(impedance_arr[2] < 1200){
+        selectPad(0);
+        calibrateAD5933(start_freq, freq_incr, num_incr, REF_RES_0);
+        selectPad(0);
+        frequencySweepEasy();
+        Serial.println("Final impedance values: ");
+        for(int i = 0; i < 10; i++){
+          Serial.println(impedance_arr[i]);
+        }
+        
+      }
+      else if(impedance_arr[2] > 4700){
+        selectPad(10);
+        calibrateAD5933(start_freq, freq_incr, num_incr, REF_RES_2);
+        selectPad(0);
+        frequencySweepEasy();
+        Serial.println("Final impedance values: ");
+        for(int i = 0; i < 10; i++){
+          Serial.println(impedance_arr[i]);
+        }
+      }
+      else{
+        Serial.println("Final impedance values: ");
+        for(int i = 0; i < 10; i++){
+          Serial.println(impedance_arr[i]);
+        }
+      }
+    }
+    else if(impedance_arr[1] > 12500){
+      selectPad(13);
+      calibrateAD5933(start_freq, freq_incr, num_incr, REF_RES_5);
+      selectPad(0);
+      frequencySweepEasy();
+      if(impedance_arr[1] < 16700){
+        selectPad(12);
+        calibrateAD5933(start_freq, freq_incr, num_incr, REF_RES_4);
+        selectPad(0);
+        frequencySweepEasy();
+        Serial.println("Final impedance values: ");
+        for(int i = 0; i < 10; i++){
+          Serial.println(impedance_arr[i]);
+        }
+      }
+      else if(impedance_arr[1] > 20500){
+        selectPad(14);
+        calibrateAD5933(start_freq, freq_incr, num_incr, REF_RES_6);
+        selectPad(0);
+        frequencySweepEasy();
+        if(impedance_arr[1] > 24500){
+          selectPad(15);
+          calibrateAD5933(start_freq, freq_incr, num_incr, REF_RES_7);
+          selectPad(0);
+          frequencySweepEasy();
+          Serial.println("Final impedance values: ");
+          for(int i = 0; i < 10; i++){
+            Serial.println(impedance_arr[i]);
+          }
+        }
+        else{
+          Serial.println("Final impedance values: ");
+          for(int i = 0; i < 10; i++){
+            Serial.println(impedance_arr[i]);
+          }
+        }
+      }
+      else{
+        Serial.println("Final impedance values: ");
+        for(int i = 0; i < 10; i++){
+          Serial.println(impedance_arr[i]);
+        }
+      }
+    }
+    else{
+      Serial.println("Final impedance values: ");
+      for(int i = 0; i < 10; i++){
+        Serial.println(impedance_arr[i]);
+      }
+    }
+    Serial.println("Done!");
+      
+//   if(userInput == 'c'){
+//     data = Serial.readStringUntil('\r');
+//     channel = data.toInt();
+//     Serial.print("Setting Channel");
+//     Serial.println(channel);
+//     selectPad(channel);
+//   }
 }
