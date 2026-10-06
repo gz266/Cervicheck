@@ -8,7 +8,7 @@ import config
 from gui import reset, exportCSV, delete, bind_font_resize, callback, openCamera, threadedCalibratePressure, runCalibCheck, changeSweepSettings
 
 def main():
-    commPort = '/dev/cu.usbmodem103'
+    commPort = '/dev/cu.usbmodem11301'
     ser = serial.Serial(commPort, baudrate = 115200, timeout = 5)
     sleep(2)
 
