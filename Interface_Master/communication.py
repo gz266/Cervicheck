@@ -74,6 +74,7 @@ def sendCalibration(ser, slope, intercept):
     sleep(0.1)
     ser.write((str(intercept) + '\r').encode())
     sleep(0.1)
+    # return ser.readline().decode('ascii', errors='replace')
 
 
 def pressureSweep(ser, on_event):

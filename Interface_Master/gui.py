@@ -360,6 +360,7 @@ def runCalibratePressure(ser, OutputLabel):
     updateOutput(f"Slope: {slope}\n", OutputLabel)
     updateOutput(f"Intercept: {intercept}\n", OutputLabel)
     updateOutput(f"R-Squared: {r_squared}\n", OutputLabel)
+    # updateOutput(communication.sendCalibration(ser, slope, intercept), OutputLabel)
     communication.sendCalibration(ser, slope, intercept)
 
 
