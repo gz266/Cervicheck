@@ -70,7 +70,7 @@ void calibCheck(void) {
     for (int k = 0; k < NUM_PADS; k++) {
         selectPad(k);
         HAL_Delay(50);
-        int val = ADSreadADC_SingleEnded(&ads, 3);
+        int val = ADSreadADC_SingleEnded(&ads, 1);
         float voltage = 3.0 * val / 1000;
         printf("CALIBCHECK,Pad %d Voltage: %.2f\r\n", k, voltage);
     }
@@ -81,31 +81,36 @@ void readAllPads(float res_arr[]) {
     for (int k = 0; k < NUM_PADS; k++) {
         selectPad(k);
         HAL_Delay(50);
-        res_arr[k] = ADSreadADC_SingleEnded(&ads, 3) * 3.0 / 1000;
+        res_arr[k] = ADSreadADC_SingleEnded(&ads, 1) * 3.0 / 1000;
     }
 }
 
 void calibratePressure(void) {
     printf("Voltage:\r\n");
-    printf("50\r\n");
-    printf("250\r\n");
     printf("500\r\n");
     printf("750\r\n");
     printf("1000\r\n");
     printf("1250\r\n");
+    printf("1500\r\n");
+    printf("1750\r\n");
     printf("Pressure:\r\n");
 
-    for (int i = 50; i < 251; i += 200) {
-    	MCP4725_setValue(&dac, (uint16_t)i, MCP4725_FAST_MODE, MCP4725_POWER_DOWN_OFF);
-        HAL_Delay(3000);
-        printf("%.2f\r\n", getPressure());
-    }
-
-    for (int i = 500; i < 1251; i += 250) {
-    	MCP4725_setValue(&dac, (uint16_t)i, MCP4725_FAST_MODE, MCP4725_POWER_DOWN_OFF);
-        HAL_Delay(3000);
-        printf("%.2f\r\n", getPressure());
-    }
+//    for (int i = 300; i < 401; i += 100) {
+//    	MCP4725_setValue(&dac, (uint16_t)i, MCP4725_FAST_MODE, MCP4725_POWER_DOWN_OFF);
+//        HAL_Delay(5000);
+//        printf("%.2f\r\n", getPressure());
+//    }
+//
+//    for (int i = 500; i < 1251; i += 250) {
+//    	MCP4725_setValue(&dac, (uint16_t)i, MCP4725_FAST_MODE, MCP4725_POWER_DOWN_OFF);
+//        HAL_Delay(5000);
+//        printf("%.2f\r\n", getPressure());
+//    }
+    for (int i = 500; i < 1751; i += 250) {
+		MCP4725_setValue(&dac, (uint16_t)i, MCP4725_FAST_MODE, MCP4725_POWER_DOWN_OFF);
+		HAL_Delay(5000);
+		printf("%.2f\r\n", getPressure());
+	}
 
     printf("Done!\r\n");
 }
@@ -159,17 +164,20 @@ void pressureSweep(void) {
 
         streamPressureSample(pressure, currentPressure, curPad);
         int count = 0;
-        float error = 0.1;
-        while (fabs(currentPressure - pressure) > error) {
+//        float error = .2f * sqrt(fabsf(pressure));
+        float error = 0.3f;
+        while (fabsf(currentPressure - pressure) > error) {
             count++;
+            HAL_Delay(5);
             currentPressure = getPressure();
-            if (count % 5 == 0) {
-                streamPressureSample(pressure, currentPressure, curPad);
-            }
-            if (count > 100) {
+//            if (count % 5 == 0) {
+//                streamPressureSample(pressure, currentPressure, curPad);
+//            }
+            if (count > 1000) {
                 break;
             }
         }
+        printf("Pressure after waiting is: %.2f\r\n", getPressure());
         streamPressureSample(pressure, currentPressure, curPad);
         runTest(curPad);
     }
