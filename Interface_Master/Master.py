@@ -1,3 +1,4 @@
+import sys
 from time import sleep
 import serial
 import tkinter as tk
@@ -5,12 +6,17 @@ from tkinter import *
 from tkinter.scrolledtext import ScrolledText
 from ScrollableNotebook import ScrollableNotebook
 import config
-from gui import reset, exportCSV, delete, bind_font_resize, callback, openCamera, threadedCalibratePressure, runCalibCheck, changeSweepSettings
+from gui import reset, exportCSV, delete, bind_font_resize, callback, openCamera, threadedCalibratePressure, runCalibCheck, changeSweepSettings, setupPadIndicator
 
 def main():
-    commPort = '/dev/cu.usbmodem2103'
-    ser = serial.Serial(commPort, baudrate = 115200, timeout = 5)
-    sleep(2)
+    if '--demo' in sys.argv:
+        # No device: replay recorded hardware transcripts instead.
+        from demo_serial import DemoSerial
+        ser = DemoSerial()
+    else:
+        commPort = '/dev/cu.usbmodem2103'
+        ser = serial.Serial(commPort, baudrate = 115200, timeout = 5)
+        sleep(2)
 
 
     # Stretch ratios and the dataframe row template are both derived from
@@ -61,7 +67,10 @@ def main():
     livePlotArea.grid_columnconfigure(0, weight=1)
     livePlotStatus = tk.Label(frame3, text='Waiting for sweep')
     livePlotStatus.grid(column=0, row=2, sticky="nsew")
-    live_plot_holder = {'parent': livePlotArea, 'status': livePlotStatus}
+    padIndicatorLabel = tk.Label(frame3, text='Pad Contact')
+    padIndicatorLabel.grid(column=0, row=3, sticky="nsew")
+    pad_indicator = setupPadIndicator(frame3, row=4)
+    live_plot_holder = {'parent': livePlotArea, 'status': livePlotStatus, 'pad_indicator': pad_indicator}
 
     ## Frame 1 Widgets
 

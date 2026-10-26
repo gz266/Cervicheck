@@ -7,6 +7,7 @@ the 7 -> 8 pad migration, which left reset() rebuilding a 12-row frame that the
 next sweep (13 values) could not be inserted into.
 """
 
+import os
 import numpy as np
 import pandas as pd
 
@@ -33,8 +34,32 @@ if not 1 <= PAD_COUNT <= len(PAD_STRAIN_RATIOS):
 # PAD_COUNT + 1, matching the pressure array built in communication.pressureSweep().
 STRAIN_RATIOS = np.array([ANCHOR_STRAIN, *PAD_STRAIN_RATIOS[-PAD_COUNT:]])
 
+# Picture of the flex PCB shown in the GUI. If the file doesn't exist, the GUI
+# draws a placeholder PCB instead.
+FLEX_PCB_IMAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'flex_pcb.png')
+
+# Where each electrode pad sits on that picture, indexed by pad number:
+# (centre x, centre y, radius), all as fractions of the image size. x and radius
+# are fractions of the image width, y is a fraction of the image height.
+# The defaults space PAD_COUNT pads evenly in a row; replace them with measured
+# values once FLEX_PCB_IMAGE is a real photo.
+PAD_POSITIONS = [((i + 0.5) / PAD_COUNT, 0.5, 0.045) for i in range(PAD_COUNT)]
+
+if len(PAD_POSITIONS) != PAD_COUNT:
+    raise ValueError(f"PAD_POSITIONS has {len(PAD_POSITIONS)} entries, expected PAD_COUNT={PAD_COUNT}")
+
 # Fitted values reported per sweep, appended below the per-pad rows.
-FIT_ROW_LABELS = ['α', 'C', 'Effective Modulus', "Young's Modulus", 'Time (ms)']
+FIT_ROW_LABELS = ['α', 'C', 'Effective Modulus', "Young's Modulus", 'Time (ms)', 'Predicted Trimester']
+
+# Young's modulus (kPa) below this is reported as abnormal, whatever the trimester.
+ABNORMAL_YOUNGS_MODULUS = 10
+
+# Trimester prediction from Young's modulus (kPa) as (lower bound, label) pairs.
+# Checked top to bottom and the first bound the modulus meets wins, so list them
+# from highest bound to lowest, e.g. [(X, '1st trimester'), (Y, '2nd trimester'),
+# (ABNORMAL_YOUNGS_MODULUS, '3rd trimester')]. While empty, every sweep that
+# isn't abnormal is reported as 'Normal'.
+TRIMESTER_YOUNGS_CUTOFFS = []
 
 # Row labels for the 'Pad number' index column of the results dataframe.
 ROW_LABELS = [*range(PAD_COUNT), *FIT_ROW_LABELS]

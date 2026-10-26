@@ -3,8 +3,9 @@ from tkinter import *
 from ScrollableNotebook import ScrollableNotebook
 import pandas as pd
 import cv2
-from PIL import Image, ImageTk
+from PIL import Image, ImageDraw, ImageTk
 import threading
+import os
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -12,13 +13,81 @@ matplotlib.use('agg')
 import numpy as np
 import communication
 import config
-from data_analysis import align_data, analyze_data, func, fit_calibration
+from data_analysis import align_data, analyze_data, func, fit_calibration, predict_trimester
 
 def _ui(widget, fn):
     try:
         widget.after(0, fn)
     except tk.TclError:
         pass
+
+
+PAD_CONTACT_COLOR = (46, 204, 113)
+
+
+def loadFlexPcbImage():
+    if os.path.exists(config.FLEX_PCB_IMAGE):
+        return Image.open(config.FLEX_PCB_IMAGE).convert('RGBA')
+    return drawPlaceholderFlexPcb()
+
+
+def drawPlaceholderFlexPcb(width=800, height=200):
+    img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    # Polyimide flex strip
+    draw.rounded_rectangle((10, 40, width - 10, height - 40), radius=30,
+                           fill=(214, 140, 40), outline=(120, 70, 10), width=3)
+    for x_frac, y_frac, r_frac in config.PAD_POSITIONS:
+        cx, cy, r = x_frac * width, y_frac * height, r_frac * width
+        # Trace from the pad to the edge of the strip
+        draw.line((cx, cy, cx, height - 40), fill=(170, 110, 30), width=4)
+        draw.ellipse((cx - r, cy - r, cx + r, cy + r),
+                     fill=(200, 200, 200), outline=(90, 90, 90), width=2)
+    return img
+
+
+def setupPadIndicator(parent, row):
+    canvas = tk.Canvas(parent, height=160, highlightthickness=0)
+    canvas.grid(column=0, row=row, sticky="nsew")
+    pad_indicator = {'canvas': canvas, 'contacted': set(),
+                     'base_image': loadFlexPcbImage(), 'photo': None}
+    # Redraw on resize so the picture always fits the frame.
+    canvas.bind('<Configure>', lambda event: drawPadIndicator(pad_indicator))
+    return pad_indicator
+
+
+def drawPadIndicator(pad_indicator):
+    canvas = pad_indicator['canvas']
+    base = pad_indicator['base_image']
+    canvas_w = max(canvas.winfo_width(), 1)
+    canvas_h = max(canvas.winfo_height(), 1)
+
+    # Fit the picture inside the canvas without stretching it.
+    scale = min(canvas_w / base.width, canvas_h / base.height)
+    w = max(int(base.width * scale), 1)
+    h = max(int(base.height * scale), 1)
+    img = base.resize((w, h), Image.LANCZOS)
+
+    overlay = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    for pad in pad_indicator['contacted']:
+        if not 0 <= pad < len(config.PAD_POSITIONS):
+            continue
+        x_frac, y_frac, r_frac = config.PAD_POSITIONS[pad]
+        cx, cy, r = x_frac * w, y_frac * h, r_frac * w
+        glow = r * 1.4
+        draw.ellipse((cx - glow, cy - glow, cx + glow, cy + glow), fill=PAD_CONTACT_COLOR + (90,))
+        draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=PAD_CONTACT_COLOR + (230,))
+    img = Image.alpha_composite(img, overlay)
+
+    # Tk drops the image if nothing in Python holds a reference to it.
+    pad_indicator['photo'] = ImageTk.PhotoImage(img)
+    canvas.delete('all')
+    x0 = (canvas_w - w) / 2
+    y0 = (canvas_h - h) / 2
+    canvas.create_image(x0, y0, image=pad_indicator['photo'], anchor=tk.NW)
+    for pad, (x_frac, y_frac, _) in enumerate(config.PAD_POSITIONS):
+        canvas.create_text(x0 + x_frac * w, y0 + y_frac * h, text=str(pad))
 
 
 def setupLivePressurePlot(live_plot_holder):
@@ -69,6 +138,11 @@ def setupLivePressurePlot(live_plot_holder):
     if status is not None:
         status.config(text="Live pressure: waiting for samples")
 
+    pad_indicator = live_plot_holder.get('pad_indicator')
+    if pad_indicator is not None:
+        pad_indicator['contacted'].clear()
+        drawPadIndicator(pad_indicator)
+
 
 def updateLivePressurePlot(live_plot_holder, time_ms, target_pressure, actual_pressure, pad_num):
     if live_plot_holder is None or live_plot_holder.get('plot_canvas') is None:
@@ -113,7 +187,7 @@ def updateLivePressurePlot(live_plot_holder, time_ms, target_pressure, actual_pr
     _ui(plot_canvas.get_tk_widget(), apply)
 
 
-def markPressureContact(live_plot_holder, time_ms, pad_num, pressure, impedance):
+def markPressureContact(live_plot_holder, time_ms, pad_num, pressure, voltage):
     if live_plot_holder is None or live_plot_holder.get('plot_canvas') is None:
         return
 
@@ -150,7 +224,17 @@ def markPressureContact(live_plot_holder, time_ms, pad_num, pressure, impedance)
 
         status = live_plot_holder.get('status')
         if status is not None:
-            status.config(text=f"Pad {pad_num} contact | Pressure {pressure:.2f} kPa | Impedance {impedance:.2f} ohms")
+            status.config(text=f"Pad {pad_num} contact | Pressure {pressure:.2f} kPa | Voltage {voltage:.2f} V")
+
+        pad_indicator = live_plot_holder.get('pad_indicator')
+        if pad_indicator is not None:
+            # The firmware reports only the furthest pad when several make contact
+            # in the same pressure step, and it walks pads front to back, stopping
+            # at the first one not in contact. So every pad after the last reported
+            # contact, up to this one, is touching too.
+            first_new_pad = max(pad_indicator['contacted'], default=-1) + 1
+            pad_indicator['contacted'].update(range(first_new_pad, pad_num + 1))
+            drawPadIndicator(pad_indicator)
 
         plot_canvas.draw_idle()
 
@@ -167,7 +251,7 @@ def updateOutput(long, OutputLabel):
         OutputLabel.after(0, _do)
     except tk.TclError:
         pass
-def updateParameters(A, C, E, Y, T, pads, a_label, C_label, eff_mod_label, youngs_mod_label, time_label, pad_label, df, j):
+def updateParameters(A, C, E, Y, T, prediction, pads, a_label, C_label, eff_mod_label, youngs_mod_label, time_label, pad_label, prediction_label, df, j):
     if A < 0.001:
         formatted_A = '{:0.3e}'.format(A)
     else:
@@ -181,7 +265,7 @@ def updateParameters(A, C, E, Y, T, pads, a_label, C_label, eff_mod_label, young
     formatted_T = '{:0.0f}'.format(T)
     # pad_text = "Pad 1: " + str(pads[1]) + "\n\nPad 2: " + str(pads[2]) + "\n\nPad 3: " + str(pads[3]) + "\n\nPad 4: " + str(pads[4]) + "\n\nPad 5: " + str(pads[5]) + "\n\nPad 6: " + str(pads[6]) + "\n\nPad 7: " + str(pads[7])
     pad_text = "Pad 0: " + str(pads[1]) + "\n\nPad 1: " + str(pads[2]) + "\n\nPad 2: " + str(pads[3]) + "\n\nPad 3: " + str(pads[4]) + "\n\nPad 4: " + str(pads[5]) + "\n\nPad 5: " + str(pads[6]) + "\n\nPad 6: " + str(pads[7]) + "\n\nPad 7: " + str(pads[8])
-    arr = [*pads[1:], formatted_A, formatted_C, formatted_E, formatted_Y, formatted_T]
+    arr = [*pads[1:], formatted_A, formatted_C, formatted_E, formatted_Y, formatted_T, prediction]
     k = j.get()
     df.insert(df.shape[1], 'Sweep ' + str(k), arr)
     a_label.config(state='normal')
@@ -213,6 +297,11 @@ def updateParameters(A, C, E, Y, T, pads, a_label, C_label, eff_mod_label, young
     pad_label.delete(1.0, tk.END)
     pad_label.insert(tk.END, pad_text)
     pad_label.config(state='disabled')
+    prediction_label.config(state='normal')
+    prediction_label.delete(1.0, tk.END)
+    prediction_label.insert(tk.END, "Predicted trimester: ")
+    prediction_label.insert(tk.END, prediction)
+    prediction_label.config(state='disabled', fg='red' if prediction == 'Abnormal' else 'black')
 
 def reset(win, OutputLabel, notebook_holder, df, j):
     notebook = notebook_holder['nb']
@@ -448,8 +537,11 @@ def runPressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap,
             pad_label = tk.Text(graph, height=15, width=30, relief=tk.RAISED, borderwidth=1)
             pad_label.grid(column=1, row=5, rowspan=5, sticky="nsew")
             pad_label.config(state='disabled')
+            prediction_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
+            prediction_label.grid(column=0, row=10, columnspan=2, sticky="nsew")
+            prediction_label.config(state='disabled')
 
-            updateParameters(*coefficients, eff_mod, youngs_mod, elapsed, pads, a_label, C_label, eff_mod_label, youngs_mod_label, time_label, pad_label, df, j)
+            updateParameters(*coefficients, eff_mod, youngs_mod, elapsed, predict_trimester(youngs_mod), pads, a_label, C_label, eff_mod_label, youngs_mod_label, time_label, pad_label, prediction_label, df, j)
 
             notebook.select(k-1)
             j.set(k+1)

@@ -2,10 +2,22 @@ import numpy as np
 import scipy
 from scipy.optimize import curve_fit
 from sympy import symbols, diff, lambdify
+import config
 
 def fit_calibration(pressures, voltages):
     result = scipy.stats.linregress(pressures, voltages)
     return result.slope, result.intercept, result.rvalue ** 2
+
+def predict_trimester(youngs_modulus):
+    """Classify a sweep's Young's modulus (kPa) using the cutoffs in config."""
+    if youngs_modulus < config.ABNORMAL_YOUNGS_MODULUS:
+        return 'Abnormal'
+    if not config.TRIMESTER_YOUNGS_CUTOFFS:
+        return 'Normal'
+    for lower_bound, trimester in config.TRIMESTER_YOUNGS_CUTOFFS:
+        if youngs_modulus >= lower_bound:
+            return trimester
+    return 'Unknown'
 
 def func(x, a, C):
     return a* C * ((x ** 2) - (1 / x))* np.exp(a * ((x ** 2) + (2 / x) - 3))
