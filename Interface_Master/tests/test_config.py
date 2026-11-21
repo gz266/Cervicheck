@@ -19,9 +19,9 @@ import config  # noqa: E402
 
 
 def _sweep_row(pad_count):
-    """The `arr` that gui.updateParameters builds: pads[1:] plus the 5 fit values."""
+    """The `arr` that gui.updateParameters builds: pads[1:] plus the fit values and prediction."""
     pressure = np.zeros(pad_count + 1)          # communication.pressureSweep
-    return [*pressure[1:], '1', '2', '3', '4', '5']
+    return [*pressure[1:], '1', '2', '3', '4', '5', 'Abnormal']
 
 
 # --- config invariants -------------------------------------------------------
@@ -160,7 +160,7 @@ def test_delete_preserves_column_data():
     """Renaming must not shuffle which values belong to which sweep."""
     df = config.new_dataframe()
     for n in (1, 2, 3):
-        row = [*[float(n)] * config.PAD_COUNT, 'a', 'b', 'c', 'd', 'e']
+        row = [*[float(n)] * config.PAD_COUNT, 'a', 'b', 'c', 'd', 'e', 'f']
         df.insert(df.shape[1], f'Sweep {n}', row)
     _simulate_delete(df, index=0, j=4)          # drop Sweep 1
     assert df['Sweep 1'].iloc[0] == 2.0         # old Sweep 2 renamed to Sweep 1

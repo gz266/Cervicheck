@@ -87,12 +87,12 @@ void readAllPads(float res_arr[]) {
 
 void calibratePressure(void) {
     printf("Voltage:\r\n");
+    printf("100\r\n");
+    printf("300\r\n");
     printf("500\r\n");
-    printf("750\r\n");
     printf("1000\r\n");
-    printf("1250\r\n");
     printf("1500\r\n");
-    printf("1750\r\n");
+    printf("2000\r\n");
     printf("Pressure:\r\n");
 
 //    for (int i = 300; i < 401; i += 100) {
@@ -101,14 +101,14 @@ void calibratePressure(void) {
 //        printf("%.2f\r\n", getPressure());
 //    }
 //
-//    for (int i = 500; i < 1251; i += 250) {
-//    	MCP4725_setValue(&dac, (uint16_t)i, MCP4725_FAST_MODE, MCP4725_POWER_DOWN_OFF);
-//        HAL_Delay(5000);
-//        printf("%.2f\r\n", getPressure());
-//    }
-    for (int i = 500; i < 1751; i += 250) {
+    for (int i = 100; i < 501; i += 200) {
+    	MCP4725_setValue(&dac, (uint16_t)i, MCP4725_FAST_MODE, MCP4725_POWER_DOWN_OFF);
+        HAL_Delay(1500);
+        printf("%.2f\r\n", getPressure());
+    }
+    for (int i = 1000; i < 2001; i += 500) {
 		MCP4725_setValue(&dac, (uint16_t)i, MCP4725_FAST_MODE, MCP4725_POWER_DOWN_OFF);
-		HAL_Delay(5000);
+		HAL_Delay(1500);
 		printf("%.2f\r\n", getPressure());
 	}
 
@@ -119,13 +119,13 @@ void precondition(int cycles) {
     for (int i = 0; i < cycles; i++) {
         // On
         releaseValve(0);
-        selectPressure(0.5);
-        HAL_Delay(200);
+        selectPressure(1);
+        HAL_Delay(300);
         printf("Pressure Held: %.2f\r\n", getPressure());
         // Off
         releaseValve(1);
         selectPressure(0);
-        HAL_Delay(500);
+        HAL_Delay(300);
         printf("Pressure Released: %.2f\r\n", getPressure());
     }
     releaseValve(0);
@@ -181,6 +181,8 @@ void pressureSweep(void) {
         streamPressureSample(pressure, currentPressure, curPad);
         runTest(curPad);
     }
+    releaseValve(1);
+    selectPressure(0);
 }
 
 void resistanceRead(void) {

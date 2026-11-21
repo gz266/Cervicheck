@@ -1,24 +1,170 @@
-import tkinter as tk
-from tkinter import *
-from ScrollableNotebook import ScrollableNotebook
 import pandas as pd
 import cv2
-from PIL import Image, ImageTk
+from PIL import Image, ImageDraw
 import threading
-import matplotlib
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-matplotlib.use('agg')
+import os
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 import numpy as np
+from PyQt6.QtCore import QObject, Qt, QTimer, QRectF, QLocale, pyqtSignal, pyqtSlot
+from PyQt6.QtGui import QColor, QImage, QPainter, QPixmap, QDoubleValidator, QTextCursor
+from PyQt6.QtWidgets import QWidget, QLabel, QFrame, QGridLayout, QInputDialog, QSizePolicy
 import communication
 import config
-from data_analysis import align_data, analyze_data, func, fit_calibration
+from data_analysis import align_data, analyze_data, func, fit_calibration, predict_trimester
 
-def _ui(widget, fn):
+
+class _Dispatcher(QObject):
+    """Runs functions on the GUI thread. Qt widgets may only be touched from the
+    thread that created them, so the sweep/calibration threads hand their UI
+    updates to this object through a queued signal (the Qt version of after(0))."""
+    call = pyqtSignal(object)
+
+    def __init__(self):
+        super().__init__()
+        self.call.connect(self._run, Qt.ConnectionType.QueuedConnection)
+
+    @pyqtSlot(object)
+    def _run(self, fn):
+        try:
+            fn()
+        except RuntimeError as e:
+            # The window was closed while a worker thread was still sending updates.
+            if 'has been deleted' not in str(e):
+                raise
+
+
+# Created at import, which happens on the main thread, so it lives there.
+_dispatcher = _Dispatcher()
+
+
+def _ui(fn):
+    _dispatcher.call.emit(fn)
+
+
+class SweepCounter:
+    """Number of the next sweep. Replaces tk.IntVar; same get()/set() interface."""
+    def __init__(self, value=1):
+        self._value = value
+
+    def get(self):
+        return self._value
+
+    def set(self, value):
+        self._value = value
+
+
+def setButtonAction(btn, text, action):
+    """Point a button at a new action (the Qt version of btn.config(text=, command=))."""
+    btn.setText(text)
     try:
-        widget.after(0, fn)
-    except tk.TclError:
-        pass
+        btn.clicked.disconnect()
+    except TypeError:
+        pass  # nothing was connected
+    btn.clicked.connect(action)
+
+
+def makeNumberValidator(parent):
+    validator = QDoubleValidator(parent)
+    validator.setNotation(QDoubleValidator.Notation.StandardNotation)
+    # Always use '.' as the decimal point, whatever the system locale.
+    validator.setLocale(QLocale.c())
+    return validator
+
+
+PAD_CONTACT_COLOR = (46, 204, 113)
+
+
+def loadFlexPcbImage():
+    if os.path.exists(config.FLEX_PCB_IMAGE):
+        return Image.open(config.FLEX_PCB_IMAGE).convert('RGBA')
+    return drawPlaceholderFlexPcb()
+
+
+def drawPlaceholderFlexPcb(width=800, height=200):
+    img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    # Polyimide flex strip
+    draw.rounded_rectangle((10, 40, width - 10, height - 40), radius=30,
+                           fill=(214, 140, 40), outline=(120, 70, 10), width=3)
+    for x_frac, y_frac, r_frac in config.PAD_POSITIONS:
+        cx, cy, r = x_frac * width, y_frac * height, r_frac * width
+        # Trace from the pad to the edge of the strip
+        draw.line((cx, cy, cx, height - 40), fill=(170, 110, 30), width=4)
+        draw.ellipse((cx - r, cy - r, cx + r, cy + r),
+                     fill=(200, 200, 200), outline=(90, 90, 90), width=2)
+    return img
+
+
+def pilToPixmap(img):
+    img = img.convert('RGBA')
+    data = img.tobytes('raw', 'RGBA')
+    qimg = QImage(data, img.width, img.height, 4 * img.width, QImage.Format.Format_RGBA8888)
+    # copy() so the QImage owns its pixels instead of pointing into `data`.
+    return QPixmap.fromImage(qimg.copy())
+
+
+class PadIndicator(QWidget):
+    """Picture of the flex PCB with the pads that have made contact lit up.
+    Repaints itself on resize so the picture always fits."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.contacted = set()
+        self.base_pixmap = pilToPixmap(loadFlexPcbImage())
+        self.setMinimumHeight(160)
+
+    def clear(self):
+        self.contacted.clear()
+        self.update()
+
+    def markContactUpTo(self, pad_num):
+        # The firmware reports only the furthest pad when several make contact
+        # in the same pressure step, and it walks pads front to back, stopping
+        # at the first one not in contact. So every pad after the last reported
+        # contact, up to this one, is touching too.
+        first_new_pad = max(self.contacted, default=-1) + 1
+        self.contacted.update(range(first_new_pad, pad_num + 1))
+        self.update()
+
+    def paintEvent(self, event):
+        base = self.base_pixmap
+        if base.isNull() or self.width() < 1 or self.height() < 1:
+            return
+
+        # Fit the picture inside the widget without stretching it.
+        scale = min(self.width() / base.width(), self.height() / base.height())
+        w = base.width() * scale
+        h = base.height() * scale
+        x0 = (self.width() - w) / 2
+        y0 = (self.height() - h) / 2
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        painter.drawPixmap(QRectF(x0, y0, w, h), base, QRectF(base.rect()))
+
+        painter.setPen(Qt.PenStyle.NoPen)
+        for pad in self.contacted:
+            if not 0 <= pad < len(config.PAD_POSITIONS):
+                continue
+            x_frac, y_frac, r_frac = config.PAD_POSITIONS[pad]
+            cx, cy, r = x0 + x_frac * w, y0 + y_frac * h, r_frac * w
+            glow = r * 1.4
+            painter.setBrush(QColor(*PAD_CONTACT_COLOR, 90))
+            painter.drawEllipse(QRectF(cx - glow, cy - glow, 2 * glow, 2 * glow))
+            painter.setBrush(QColor(*PAD_CONTACT_COLOR, 230))
+            painter.drawEllipse(QRectF(cx - r, cy - r, 2 * r, 2 * r))
+
+        painter.setPen(QColor(Qt.GlobalColor.black))
+        for pad, (x_frac, y_frac, _) in enumerate(config.PAD_POSITIONS):
+            cx, cy = x0 + x_frac * w, y0 + y_frac * h
+            painter.drawText(QRectF(cx - 20, cy - 10, 40, 20), Qt.AlignmentFlag.AlignCenter, str(pad))
+        painter.end()
+
+
+def setupPadIndicator(parent=None):
+    return PadIndicator(parent)
 
 
 def setupLivePressurePlot(live_plot_holder):
@@ -29,14 +175,14 @@ def setupLivePressurePlot(live_plot_holder):
     if parent is None:
         return
 
-    old_fig = live_plot_holder.get('fig')
-    if old_fig is not None:
-        plt.close(old_fig)
+    # Swap out the previous sweep's plot.
+    old_canvas = live_plot_holder.get('plot_canvas')
+    if old_canvas is not None:
+        parent.layout().removeWidget(old_canvas)
+        old_canvas.deleteLater()
 
-    for child in parent.winfo_children():
-        child.destroy()
-
-    fig, ax = plt.subplots(figsize=(3, 2), layout='constrained')
+    fig = Figure(figsize=(3, 2), layout='constrained')
+    ax = fig.add_subplot()
     actual_line, = ax.plot([], [], 'b-', label='Measured')
     target_line, = ax.plot([], [], 'r--', label='Target')
 
@@ -46,10 +192,8 @@ def setupLivePressurePlot(live_plot_holder):
     ax.grid(True, linestyle='--', linewidth=0.5)
     ax.legend(loc='best')
 
-    plot_canvas = FigureCanvasTkAgg(fig, master=parent)
-    plot_canvas.get_tk_widget().grid(row=0, column=0, sticky="NSEW")
-    parent.grid_rowconfigure(0, weight=1)
-    parent.grid_columnconfigure(0, weight=1)
+    plot_canvas = FigureCanvasQTAgg(fig)
+    parent.layout().addWidget(plot_canvas)
 
     live_plot_holder.update({
         'fig': fig,
@@ -67,7 +211,11 @@ def setupLivePressurePlot(live_plot_holder):
 
     status = live_plot_holder.get('status')
     if status is not None:
-        status.config(text="Live pressure: waiting for samples")
+        status.setText("Live pressure: waiting for samples")
+
+    pad_indicator = live_plot_holder.get('pad_indicator')
+    if pad_indicator is not None:
+        pad_indicator.clear()
 
 
 def updateLivePressurePlot(live_plot_holder, time_ms, target_pressure, actual_pressure, pad_num):
@@ -106,14 +254,14 @@ def updateLivePressurePlot(live_plot_holder, time_ms, target_pressure, actual_pr
 
         status = live_plot_holder.get('status')
         if status is not None:
-            status.config(text=f"Pad {pad_num} | Target {target_pressure:.2f} kPa | Measured {actual_pressure:.2f} kPa")
+            status.setText(f"Pad {pad_num} | Target {target_pressure:.2f} kPa | Measured {actual_pressure:.2f} kPa")
 
         plot_canvas.draw_idle()
 
-    _ui(plot_canvas.get_tk_widget(), apply)
+    _ui(apply)
 
 
-def markPressureContact(live_plot_holder, time_ms, pad_num, pressure, impedance):
+def markPressureContact(live_plot_holder, time_ms, pad_num, pressure, voltage):
     if live_plot_holder is None or live_plot_holder.get('plot_canvas') is None:
         return
 
@@ -150,24 +298,26 @@ def markPressureContact(live_plot_holder, time_ms, pad_num, pressure, impedance)
 
         status = live_plot_holder.get('status')
         if status is not None:
-            status.config(text=f"Pad {pad_num} contact | Pressure {pressure:.2f} kPa | Impedance {impedance:.2f} ohms")
+            status.setText(f"Pad {pad_num} contact | Pressure {pressure:.2f} kPa | Voltage {voltage:.2f} V")
+
+        pad_indicator = live_plot_holder.get('pad_indicator')
+        if pad_indicator is not None:
+            pad_indicator.markContactUpTo(pad_num)
 
         plot_canvas.draw_idle()
 
-    _ui(plot_canvas.get_tk_widget(), apply)
+    _ui(apply)
 
 
 def updateOutput(long, OutputLabel):
     def _do():
-        OutputLabel.configure(state='normal')
-        OutputLabel.insert(tk.END, long)
-        OutputLabel.see('end')
-        OutputLabel.configure(state='disabled')
-    try:
-        OutputLabel.after(0, _do)
-    except tk.TclError:
-        pass
-def updateParameters(A, C, E, Y, T, pads, a_label, C_label, eff_mod_label, youngs_mod_label, time_label, pad_label, df, j):
+        OutputLabel.moveCursor(QTextCursor.MoveOperation.End)
+        OutputLabel.insertPlainText(long)
+        OutputLabel.ensureCursorVisible()
+    _ui(_do)
+
+
+def updateParameters(A, C, E, Y, T, prediction, pads, a_label, C_label, eff_mod_label, youngs_mod_label, time_label, pad_label, prediction_label, df, j):
     if A < 0.001:
         formatted_A = '{:0.3e}'.format(A)
     else:
@@ -181,161 +331,134 @@ def updateParameters(A, C, E, Y, T, pads, a_label, C_label, eff_mod_label, young
     formatted_T = '{:0.0f}'.format(T)
     # pad_text = "Pad 1: " + str(pads[1]) + "\n\nPad 2: " + str(pads[2]) + "\n\nPad 3: " + str(pads[3]) + "\n\nPad 4: " + str(pads[4]) + "\n\nPad 5: " + str(pads[5]) + "\n\nPad 6: " + str(pads[6]) + "\n\nPad 7: " + str(pads[7])
     pad_text = "Pad 0: " + str(pads[1]) + "\n\nPad 1: " + str(pads[2]) + "\n\nPad 2: " + str(pads[3]) + "\n\nPad 3: " + str(pads[4]) + "\n\nPad 4: " + str(pads[5]) + "\n\nPad 5: " + str(pads[6]) + "\n\nPad 6: " + str(pads[7]) + "\n\nPad 7: " + str(pads[8])
-    arr = [*pads[1:], formatted_A, formatted_C, formatted_E, formatted_Y, formatted_T]
+    arr = [*pads[1:], formatted_A, formatted_C, formatted_E, formatted_Y, formatted_T, prediction]
     k = j.get()
     df.insert(df.shape[1], 'Sweep ' + str(k), arr)
-    a_label.config(state='normal')
-    a_label.delete(1.0, tk.END)
-    a_label.insert(tk.END, "α: ")
-    a_label.insert(tk.END, formatted_A)
-    a_label.config(state='disabled')
-    C_label.config(state='normal')
-    C_label.delete(1.0, tk.END)
-    C_label.insert(tk.END, "C: ")
-    C_label.insert(tk.END, formatted_C)
-    C_label.config(state='disabled')
-    eff_mod_label.config(state='normal')
-    eff_mod_label.delete(1.0, tk.END)
-    eff_mod_label.insert(tk.END, "Effective modulus: ")
-    eff_mod_label.insert(tk.END, formatted_E)
-    eff_mod_label.config(state='disabled')
-    youngs_mod_label.config(state='normal')
-    youngs_mod_label.delete(1.0, tk.END)
-    youngs_mod_label.insert(tk.END, "Young's modulus: ")
-    youngs_mod_label.insert(tk.END, formatted_Y)
-    youngs_mod_label.config(state='disabled')
-    time_label.config(state='normal')
-    time_label.delete(1.0, tk.END)
-    time_label.insert(tk.END, "Time (ms): ")
-    time_label.insert(tk.END, formatted_T)
-    time_label.config(state='disabled')
-    pad_label.config(state='normal')
-    pad_label.delete(1.0, tk.END)
-    pad_label.insert(tk.END, pad_text)
-    pad_label.config(state='disabled')
+    a_label.setText("α: " + formatted_A)
+    C_label.setText("C: " + formatted_C)
+    eff_mod_label.setText("Effective modulus: " + formatted_E)
+    youngs_mod_label.setText("Young's modulus: " + formatted_Y)
+    time_label.setText("Time (ms): " + formatted_T)
+    pad_label.setText(pad_text)
+    prediction_label.setText("Predicted trimester: " + prediction)
+    prediction_label.setStyleSheet('color: red;' if prediction == 'Abnormal' else '')
 
-def reset(win, OutputLabel, notebook_holder, df, j):
-    notebook = notebook_holder['nb']
+
+def _clearTabs(notebook):
+    while notebook.count():
+        page = notebook.widget(0)
+        notebook.removeTab(0)
+        page.deleteLater()
+    notebook.hide()
+
+
+def reset(OutputLabel, notebook, df, j):
     # Row template comes from config so it always matches the width of the rows
     # that updateParameters() will insert. Spelling it out here is what let the
     # 7-pad and 8-pad versions drift apart.
     config.reset_dataframe(df)
-    notebook.destroy()
-    new_notebook = ScrollableNotebook(win, tabmenu = False)
-    notebook_holder['nb'] = new_notebook 
-    win.grid_columnconfigure(3, weight=0)
-    OutputLabel.configure(state='normal')
-    OutputLabel.delete(1.0, tk.END)
-    OutputLabel.configure(state='disabled')
+    _clearTabs(notebook)
+    OutputLabel.clear()
     j.set(1)
 
-def exportCSV(df, OutputLabel):
-    name = None
-    name_var = tk.StringVar()
-    def saveName(event=None):
+
+def exportCSV(df, OutputLabel, parent=None):
+    entered, ok = QInputDialog.getText(parent, "Export CSV", "Enter filename:")
+    if not ok:
+        return
+    name = entered.strip()
+    if not name:
         date = pd.Timestamp.now().strftime('%Y-%m-%d_%H-%M-%S')
-        name = field.get().strip()
-        # field.get() returns '' when empty, never None, so the old `== None`
-        # check never fired and an empty box saved to a file called '.csv'.
-        if not name:
-            name = 'sweep_data_' + date
-        name_var.set(name)
-        long_text = "\nData exported to CSV file: " + name + ".csv"
-        updateOutput(long_text, OutputLabel)
-        name = name_var.get()
-        df.to_csv(f'{name}.csv', index=False)
-        winput.destroy()
+        name = 'sweep_data_' + date
+    updateOutput("\nData exported to CSV file: " + name + ".csv", OutputLabel)
+    df.to_csv(f'{name}.csv', index=False)
 
-    winput = tk.Toplevel()
-    winput.wm_geometry("300x150")
-    winput.title("Export CSV")
 
-    field = tk.Entry(winput, bd=6, width=30)
-    field.grid(row=1, column=0, padx=10, pady=10)
-    field.bind("<Return>", saveName)
-
-    button = tk.Button(winput, text="Save", command=saveName)
-    button.grid(row=2, column=0, padx=10, pady=10)
-    button.configure(width=12, height=1)
-
-    label = tk.Label(winput, text="Enter filename:")
-    label.grid(row=0, column=0, padx=10, pady=10)
-
-    field.focus_set()
-    # wait_window() blocks on this dialog using the root's existing event loop.
-    # mainloop() here would start a second, nested loop under the root's.
-    winput.wait_window()
-
-def delete(j, df, notebook_holder, win, OutputLabel):
-    notebook = notebook_holder['nb']
-    # No tabs at all (fresh start, post-reset, or the last sweep already deleted)
-    # makes index("current") raise TclError rather than return anything useful.
-    try:
-        index = notebook.index("current")
-    except tk.TclError:
+def delete(j, df, notebook, OutputLabel):
+    # currentIndex() is -1 when there are no tabs (fresh start, post-reset, or
+    # the last sweep already deleted).
+    index = notebook.currentIndex()
+    if index < 0:
         updateOutput("\nNo sweep to delete\n", OutputLabel)
         return
     df.drop(df.columns[index+1], axis=1, inplace=True)
-    notebook.forget(index)
+    page = notebook.widget(index)
+    notebook.removeTab(index)
+    page.deleteLater()
     long_text = "\nSweep " + str(index + 1) + " deleted"
     updateOutput(long_text, OutputLabel)
     k = j.get()
     if k == 2:
         j.set(1)
-        notebook.destroy()
-        new_notebook = ScrollableNotebook(win, tabmenu = False)
-        notebook_holder['nb'] = new_notebook
-        # Match reset(): the notebook is gone, so stop column 3 from claiming space.
-        win.grid_columnconfigure(3, weight=0)
+        _clearTabs(notebook)
     else:
         for i in range(index, k-2):
-            notebook.tab(i, text='Sweep ' + str(i+1))
+            notebook.setTabText(i, 'Sweep ' + str(i+1))
             df.rename(columns={df.columns[i+1]: 'Sweep ' + str(i+1)}, inplace=True)
         j.set(k - 1)
 
 # Endoscope output
 
-def updateFrame(canvas, win, photo, cap):
-    ret, frame = cap.read()
-    if ret:
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        canvas_width = canvas.winfo_width()
-        canvas_height = canvas.winfo_height()
+def setupCameraView(parent=None):
+    view = QLabel(parent)
+    view.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    # Ignored size policy stops each new frame from growing the label (and the window).
+    view.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+    view.setMinimumSize(30, 70)
+    timer = QTimer(view)
+    camera = {'view': view, 'cap': None, 'timer': timer}
+    timer.timeout.connect(lambda: updateFrame(camera))
+    return camera
 
-        img = Image.fromarray(frame)
-        img = img.resize((canvas_width, canvas_height), Image.LANCZOS)
-        photo = ImageTk.PhotoImage(image=img)
-        canvas.create_image(0, 0, image=photo, anchor=tk.NW)
-        win.after(15, lambda : updateFrame(canvas, win, photo, cap))  # Schedule the next frame update
-    
-class Pressure(Exception):
-    def __init__(self, message):
-        self.message = message
-        super().__init__(self.message)
-    def __str__(self):
-        return self.message
+
+def updateFrame(camera):
+    cap = camera['cap']
+    ret, frame = cap.read() if cap is not None else (False, None)
+    if not ret:
+        camera['timer'].stop()
+        return
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    h, w, ch = frame.shape
+    img = QImage(frame.data, w, h, ch * w, QImage.Format.Format_RGB888).copy()
+    view = camera['view']
+    view.setPixmap(QPixmap.fromImage(img).scaled(
+        view.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+
+
+def stopCamera(camera):
+    camera['timer'].stop()
+    if camera['cap'] is not None:
+        camera['cap'].release()
+        camera['cap'] = None
 
 
 def changeSweepSettings(presStart, presIncr, presNumIncr, voltThresh, ser, OutputLabel):
-    start = float(presStart.get())
-    incr = float(presIncr.get())
-    num_incr = int(presNumIncr.get())
+    # Errors are logged and returned rather than raised: an exception escaping a
+    # Qt button handler can take the whole app down.
+    try:
+        start = float(presStart.text())
+        incr = float(presIncr.text())
+        num_incr = int(float(presNumIncr.text()))
+        float(voltThresh.text())
+    except ValueError:
+        updateOutput("\nSweep settings must all be numbers", OutputLabel)
+        return
     maxPres = start + incr * num_incr
 
     if start > 0:
         updateOutput("\nPressure must begin at 0 kPa or less", OutputLabel)
-        raise Pressure("Pressure must begin at 0 kPa or less")
+        return
     elif maxPres < -50:
         updateOutput("\nPressure must be under 50 kPa", OutputLabel)
-        raise Pressure("Pressure must be under 50 kPa")
+        return
 
     accepted, rejected = communication.applySweepSettings(
-        ser, presStart.get(), presIncr.get(), presNumIncr.get(), voltThresh.get())
+        ser, presStart.text(), presIncr.text(), presNumIncr.text(), voltThresh.text())
 
     updateOutput("\nSweep Settings Changed:"
-                 f"\nStart: {presStart.get()}"
-                 f"\nIncrement: {presIncr.get()}"
-                 f"\nNumber of Increments: {presNumIncr.get()}\n", OutputLabel)
+                 f"\nStart: {presStart.text()}"
+                 f"\nIncrement: {presIncr.text()}"
+                 f"\nNumber of Increments: {presNumIncr.text()}\n", OutputLabel)
 
     if accepted is None:
         updateOutput("Contact Voltage: NO CONFIRMATION from device, threshold may be unchanged\n", OutputLabel)
@@ -378,10 +501,16 @@ def runCalibCheck(ser, OutputLabel):
     communication.calibCheck(ser, on_event)
 
 
-def runPressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder=None, k=1):
-    cap.release()
-    notebook = notebook_holder['nb']
+def _makeResultLabel(parent):
+    label = QLabel(parent)
+    label.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Raised)
+    label.setWordWrap(True)
+    label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+    label.setMargin(4)
+    return label
 
+
+def runPressureSweep(ser, strain, j, df, notebook, OutputLabel, camera, btn, live_plot_holder=None, k=1):
     def on_event(event):
         kind = event[0]
         if kind == 'pressure':
@@ -401,28 +530,21 @@ def runPressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap,
 
         def build(x=x, y=y, coefficients=coefficients, eff_mod=eff_mod,
                   youngs_mod=youngs_mod, elapsed=elapsed_ms, pads=pads.copy()):
-            fig, ax = plt.subplots(figsize=(3, 2), layout='constrained')
+            fig = Figure(figsize=(3, 2), layout='constrained')
+            ax = fig.add_subplot()
             strain_min, strain_max = 1.0, 2.5
             ax.set_xlim([strain_min, strain_max])
             ax.set_title("Stress Strain Curve")
             ax.set_ylabel("Pressure (kPa)")
             ax.set_xlabel("Strain Ratio")
 
-            if k == 1:
-                notebook.grid(column=3, row=0, sticky='NSEW')
-                win.grid_columnconfigure(3, weight=1)
-                notebook.grid_rowconfigure(0, weight=1)
-                notebook.grid_columnconfigure(0, weight=1)
-            graph = tk.Frame()
-            notebook.add(graph, text = 'Sweep ' + str(k))
-            graph.grid_rowconfigure(0, weight=1)
-            graph.grid_columnconfigure(0, weight=1)
-            graph.grid_columnconfigure(1, weight=1)
-            canvas_new = FigureCanvasTkAgg(fig, master=graph)
-            canvas_widget_new = canvas_new.get_tk_widget()
-            canvas_widget_new.grid(row=0, column=0, columnspan=2, sticky="NSEW")
-            canvas_widget_new.grid_rowconfigure(0, weight=1)
-            canvas_widget_new.grid_columnconfigure(0, weight=1)
+            graph = QWidget()
+            layout = QGridLayout(graph)
+            canvas_new = FigureCanvasQTAgg(fig)
+            layout.addWidget(canvas_new, 0, 0, 1, 2)
+            layout.setRowStretch(0, 1)
+            layout.setColumnStretch(0, 1)
+            layout.setColumnStretch(1, 1)
             curve_x = np.linspace(strain_min, strain_max, 300)
             ax.plot(curve_x, func(curve_x, *coefficients), 'r-')
             youngs_mod_line = lambda v: youngs_mod * v - youngs_mod
@@ -430,82 +552,45 @@ def runPressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap,
             ax.scatter(x, -y, s=4, c='black')
             canvas_new.draw()
 
-            a_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
-            a_label.grid(column=0, row=5, sticky="nsew")
-            a_label.config(state='disabled')
-            C_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
-            C_label.grid(column=0, row=6, sticky="nsew")
-            C_label.config(state='disabled')
-            eff_mod_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
-            eff_mod_label.grid(column=0, row=7, sticky="nsew")
-            eff_mod_label.config(state='disabled')
-            youngs_mod_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
-            youngs_mod_label.grid(column=0, row=8, sticky="nsew")
-            youngs_mod_label.config(state='disabled')
-            time_label = tk.Text(graph, height=3, width=30, relief=tk.RAISED, borderwidth=1)
-            time_label.grid(column=0, row=9, sticky="nsew")
-            time_label.config(state='disabled')
-            pad_label = tk.Text(graph, height=15, width=30, relief=tk.RAISED, borderwidth=1)
-            pad_label.grid(column=1, row=5, rowspan=5, sticky="nsew")
-            pad_label.config(state='disabled')
+            a_label = _makeResultLabel(graph)
+            C_label = _makeResultLabel(graph)
+            eff_mod_label = _makeResultLabel(graph)
+            youngs_mod_label = _makeResultLabel(graph)
+            time_label = _makeResultLabel(graph)
+            for row, label in enumerate([a_label, C_label, eff_mod_label, youngs_mod_label, time_label], start=1):
+                layout.addWidget(label, row, 0)
+            pad_label = _makeResultLabel(graph)
+            layout.addWidget(pad_label, 1, 1, 5, 1)
+            prediction_label = _makeResultLabel(graph)
+            layout.addWidget(prediction_label, 6, 0, 1, 2)
 
-            updateParameters(*coefficients, eff_mod, youngs_mod, elapsed, pads, a_label, C_label, eff_mod_label, youngs_mod_label, time_label, pad_label, df, j)
+            updateParameters(*coefficients, eff_mod, youngs_mod, elapsed, predict_trimester(youngs_mod), pads, a_label, C_label, eff_mod_label, youngs_mod_label, time_label, pad_label, prediction_label, df, j)
 
-            notebook.select(k-1)
+            notebook.addTab(graph, 'Sweep ' + str(k))
+            notebook.show()
+            notebook.setCurrentIndex(k-1)
             j.set(k+1)
 
-        _ui(win, build)
+        _ui(build)
 
-    _ui(btn, lambda: btn.config(text="Open Camera", command=lambda: openCamera(canvas, win, OutputLabel, btn, ser, strain, j, df, notebook_holder, live_plot_holder)))
+    _ui(lambda: setButtonAction(btn, "Open Camera", lambda: openCamera(camera, OutputLabel, btn, ser, strain, j, df, notebook, live_plot_holder)))
 
 
-def threadedPressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder=None):
+def threadedPressureSweep(ser, strain, j, df, notebook, OutputLabel, camera, btn, live_plot_holder=None):
+    # The camera timer lives on the GUI thread, so stop it here before the sweep
+    # thread starts rather than releasing the camera from inside that thread.
+    stopCamera(camera)
     setupLivePressurePlot(live_plot_holder)
     k = j.get()
     threading.Thread(target=runPressureSweep,
-                     args=(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder),
+                     args=(ser, strain, j, df, notebook, OutputLabel, camera, btn, live_plot_holder),
                      kwargs={'k': k}).start()
 
 
-def openCamera(canvas, win, OutputLabel, btn, ser, strain, j, df, notebook_holder, live_plot_holder=None):
+def openCamera(camera, OutputLabel, btn, ser, strain, j, df, notebook, live_plot_holder=None):
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         updateOutput("Error: Could not open camera.", OutputLabel)
-    photo = None
-    updateFrame(canvas, win, photo, cap)
-    btn.config(text="Pressure Sweep", command=lambda: threadedPressureSweep(win, ser, strain, j, df, notebook_holder, OutputLabel, cap, canvas, btn, live_plot_holder))
-
-def callback(P):
-    try:
-        float(P)
-        return True
-    except ValueError:
-        return False
-    return str.isdigit(P) or P=='' or (str(P)[0] == '-' and str.isdigit(P[1:])) or str(P) == '-'
-
-def font_resize(o, event=None):
-        x = o.winfo_width()
-        y = o.winfo_height()
-        if x < 20 or y < 30:  # guard clause to avoid tiny values
-            return
-        if x < y:
-            size = x - 10
-        elif y < 40:
-            size = y - 20
-        else:
-            size = 20
-        if getattr(o, '_last_font_size', None) == size:
-            return
-        o._last_font_size = size
-        o.config(font=("TkDefaultFont", size))
-
-def bind_font_resize(win, o, delay=120):
-    pending = {'id': None}
-    def on_configure(event=None):
-        if pending['id'] is not None:
-            try:
-                win.after_cancel(pending['id'])
-            except tk.TclError:
-                pass
-        pending['id'] = win.after(delay, lambda: font_resize(o=o))
-    win.bind('<Configure>', on_configure)
+    camera['cap'] = cap
+    camera['timer'].start(15)
+    setButtonAction(btn, "Pressure Sweep", lambda: threadedPressureSweep(ser, strain, j, df, notebook, OutputLabel, camera, btn, live_plot_holder))
