@@ -38,7 +38,7 @@ def main():
         from demo_serial import DemoSerial
         ser = DemoSerial()
     else:
-        commPort = 'COM6'
+        commPort = '/dev/cu.usbmodem103'
         ser = serial.Serial(commPort, baudrate = 115200, timeout = 5)
         sleep(2)
 

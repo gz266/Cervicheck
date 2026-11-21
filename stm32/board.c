@@ -119,13 +119,13 @@ void precondition(int cycles) {
     for (int i = 0; i < cycles; i++) {
         // On
         releaseValve(0);
-        selectPressure(0.5);
-        HAL_Delay(200);
+        selectPressure(1);
+        HAL_Delay(400);
         printf("Pressure Held: %.2f\r\n", getPressure());
         // Off
         releaseValve(1);
         selectPressure(0);
-        HAL_Delay(500);
+        HAL_Delay(400);
         printf("Pressure Released: %.2f\r\n", getPressure());
     }
     releaseValve(0);
@@ -181,6 +181,7 @@ void pressureSweep(void) {
         streamPressureSample(pressure, currentPressure, curPad);
         runTest(curPad);
     }
+    releaseValve(1);
 }
 
 void resistanceRead(void) {
